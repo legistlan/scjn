@@ -156,6 +156,10 @@ python scripts/check_package_versions.py                                  # one 
   `__version__`, builds, checks and uploads with the organization's `TWINE` secret.
 - Publish order across repositories: `scjn` before the `nota2md` release that raises its floor. A
   published package never carries a URL dependency.
+- `[tool.uv] cache-keys` in `pyproject.toml` lists `scjn/__init__.py` (with `pyproject.toml` and
+  `setup.py`, which replacing uv's default list drops) so uv rebuilds the editable install when
+  `__version__` changes. Development-only: nothing in the wheel or a release changes;
+  `tests/test_packaging.py` pins it.
 
 ## Git workflow: branches, issues and PRs
 

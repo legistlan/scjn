@@ -209,6 +209,7 @@ unrelated. `scripts/tests` holds the two tests of the crawl scripts.
 | `test_header.py` | the provenance header |
 | `test_markdown.py` | the plain-text-to-Markdown writer (`scjn.markdown`) |
 | `test_outline.py` | the outline markers the writer keeps |
+| `test_packaging.py` | `[tool.uv] cache-keys` lists `scjn/__init__.py`, where the dynamic version lives |
 | `test_release.py` | the release readers; the three id-keyed collections share one parametrised wrapper set (`TestIdKeyedWrappers`, over `COLECCIONES_POR_ID`) |
 | `test_release_red.py` | end-to-end check against the real release (network) |
 | `test_site_references.py` | no reference to the retired WebForms site anywhere in the tree |

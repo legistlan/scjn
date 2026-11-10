@@ -50,3 +50,8 @@ include = ["scjn", "scjn.*"]
 
 [tool.setuptools.dynamic]
 version = {attr = 'scjn.__version__'}
+
+[tool.uv]
+# The version is dynamic (read from scjn/__init__.py); without it in the
+# cache keys uv would not rebuild the editable install when __version__ bumps.
+cache-keys = [{ file = "pyproject.toml" }, { file = "setup.py" }, { file = "scjn/__init__.py" }]

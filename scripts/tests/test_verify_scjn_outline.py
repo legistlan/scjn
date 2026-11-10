@@ -1,5 +1,5 @@
 """`scripts/verify_scjn_outline.py` (issue #303) on a toy corpus written to
-`tmp_path` with the real writer -- no network. Not part of `pytest packages/scjn`
+`tmp_path` with the real writer -- no network. Not part of `pytest tests`
 (this directory is orchestration, not a package): run with
 
     pytest scripts/tests -q
@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "packages" / "scjn"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 import verify_scjn_outline as v  # noqa: E402
 from scjn.api import Articulo, articulos_a_markdown, guarda_crudo  # noqa: E402

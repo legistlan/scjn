@@ -1,29 +1,30 @@
 #!/usr/bin/env python3
-"""Check every publishable package's local version against PyPI.
+"""Check the package's local version against PyPI.
 
 `publish-pypi.yml` only checks, at the moment a tag is pushed, that the tag
 matches `pyproject.toml`. Nothing checks *before* that whether the local
 version is actually ahead of what PyPI has, or whether it jumped more than
 one release past it — so `__version__` can drift arbitrarily far from what
-is actually published (issue #194).
+is actually published (LegalIA's issue #194, inherited with the package).
 
-For each package, this reports PyPI's latest version, the local version
+This reports PyPI's latest version, the local version
 (read from `pyproject.toml`'s dynamic `<pkg>.__version__` attribute without
 importing the package, so it needs none of its dependencies installed), and
 whether the local version is a valid single-step jump ahead of PyPI: the
 next patch, or the next minor with patch reset to 0. A package PyPI has
 never published (`pypi_latest_version` returns `None`) always passes this
 check — there is nothing to jump ahead of yet. So would a package marked
-`[tool.legalia] tombstone = true`: a renamed package's final release, whose
-version stops moving once it is published (see `is_tombstone`). No package
-here carries that marker today — the one that did, `dof2md`, left with
-`document2md` for its own repository (issue #234) — but the mechanism stays,
-because it exists so the next rename costs a key rather than an edit here.
+`[tool.scjn] tombstone = true`: a renamed package's final release, whose
+version stops moving once it is published (see `is_tombstone`). Nothing here
+carries that marker; the mechanism stays so a rename costs a key rather than
+an edit here.
+
+The repository is the package, so `PACKAGE_DIRS` maps its one name to the
+repository root instead of listing a `packages/` directory.
 
 Usage:
 
     python scripts/check_package_versions.py
-    python scripts/check_package_versions.py --package dofjson --package nota2md
 """
 
 import argparse
@@ -37,7 +38,10 @@ from pathlib import Path
 
 from packaging.version import Version
 
-PACKAGES_DIR = Path(__file__).resolve().parents[1] / "packages"
+ROOT = Path(__file__).resolve().parents[1]
+
+# The repository *is* `scjn`: one package, at the root.
+PACKAGE_DIRS = {"scjn": ROOT}
 
 
 def pypi_latest_version(package: str) -> str | None:
@@ -89,22 +93,17 @@ def is_tombstone(package_dir: Path) -> bool:
     version is published, local and PyPI agree forever, which the check below
     would otherwise report as "local is not ahead of PyPI" on every pull
     request from then on. The marker lives in the package it describes, so the
-    next rename costs a key rather than an edit here.
-
-    The rename that motivated it, `dof2md` → `document2md` (issue #228), is why
-    this reads as past incident rather than live configuration: both packages
-    moved to https://github.com/INGEOTEC/document2md in issue #234, taking the
-    only `tombstone = true` marker with them. That repository's own copy of
-    this script keeps the check (under `[tool.document2md]`); this one keeps it
-    for whatever gets renamed next."""
+    next rename costs a key rather than an edit here. The rename that
+    motivated it, `dof2md` → `document2md` (LegalIA's issue #228), lives in
+    that package's own repository, with its copy of this script."""
     pyproject = tomllib.load(open(package_dir / "pyproject.toml", "rb"))
-    return bool(pyproject.get("tool", {}).get("legalia", {}).get("tombstone", False))
+    return bool(pyproject.get("tool", {}).get("scjn", {}).get("tombstone", False))
 
 
 def check_package(package: str) -> tuple[str, str | None, str, bool, str]:
     """Returns (package, pypi_version, local_version, ok, detail)."""
     pypi = pypi_latest_version(package)
-    package_dir = PACKAGES_DIR / package
+    package_dir = PACKAGE_DIRS[package]
     local = local_version(package_dir)
     local_v = Version(local)
 
@@ -138,13 +137,12 @@ def main() -> int:
         action="append",
         dest="packages",
         metavar="NAME",
-        help="check only this package (repeatable); default: every package under packages/",
+        choices=sorted(PACKAGE_DIRS),
+        help="check only this package (repeatable); default: every package in PACKAGE_DIRS",
     )
     args = parser.parse_args()
 
-    packages = args.packages or sorted(
-        p.name for p in PACKAGES_DIR.iterdir() if (p / "pyproject.toml").is_file()
-    )
+    packages = args.packages or sorted(PACKAGE_DIRS)
 
     rows = [check_package(package) for package in packages]
 

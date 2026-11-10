@@ -30,8 +30,7 @@ from collections import Counter
 from pathlib import Path
 
 _RAIZ = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_RAIZ / "packages" / "nota2md"))
-sys.path.insert(0, str(_RAIZ / "packages" / "scjn"))
+sys.path.insert(0, str(_RAIZ))
 
 from scjn.catalog import slug_instrumento  # noqa: E402
 from scjn.header import lee_cabecera, versiones_de_directorio  # noqa: E402

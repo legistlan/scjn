@@ -37,7 +37,7 @@ on drift, ``no-raw`` or a gap.
     ./scripts/verify_scjn_outline.py --compare output/outline-before.json
     ./scripts/verify_scjn_outline.py --guard                  # audit the completeness guard
     ./scripts/verify_scjn_outline.py --write-vocabulary \\
-        packages/md2akn/tests/fixtures_units/marker_vocabulary.json
+        ../md2akn/tests/fixtures_units/marker_vocabulary.json   # md2akn's own checkout
 
 ``--guard`` audits ``scjn.api.completeness_defects`` and ``_sin_filas_repetidas`` over every
 raw answer kept (what a raw file does not record is the ``tamanio`` the API declared,
@@ -55,7 +55,7 @@ from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_ROOT / "packages" / "scjn"))
+sys.path.insert(0, str(_ROOT))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from measure_block_gaps import is_explained, ledger_status, missing_orden, served_orden  # noqa: E402
@@ -346,7 +346,7 @@ VOCABULARY_EXAMPLES = (
 
 def build_vocabulary(distribution: dict | None) -> dict:
     """The marker vocabulary, from `scjn.outline` alone, as the JSON fixture
-    ``packages/md2akn/tests/fixtures_units/marker_vocabulary.json``.
+    ``tests/fixtures_units/marker_vocabulary.json`` of `md2akn`'s own repository.
 
     ``examples`` is one marker per `classify` branch with the attributes
     `parse_marker` reads back from it, what `md2akn`'s reader has to agree with.

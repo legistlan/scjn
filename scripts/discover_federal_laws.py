@@ -32,10 +32,11 @@ import argparse
 import sys
 from pathlib import Path
 
-# Run straight from a clone, without `pip install -e packages/nota2md` first.
+# `dofjson` and `nota2md` are not dependencies of the package: they come from
+# PyPI (`pip install dofjson nota2md`, or `uv sync --group scripts`), and
+# `scjn` itself is the repository root.
 _RAIZ = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_RAIZ / "packages" / "nota2md"))
-sys.path.insert(0, str(_RAIZ / "packages" / "scjn"))
+sys.path.insert(0, str(_RAIZ))
 
 from dofjson.titulos import legal_provisions_titles  # noqa: E402
 from nota2md.linking import newest_dof_publication_dates  # noqa: E402

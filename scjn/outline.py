@@ -53,9 +53,9 @@ all predates review fix-2 of #291 and is read as plain text.
 
 **Three readers of one grammar.** This module, `md2akn.outline`
 (`MARCADOR_ESQUEMA`/`lee_marcador`) and `stripMarkers` in
-`website/pages/instruments/instruments.js` each read it, and `md2akn` and the page
+the Atlas's Instruments page (`instruments.js`) each read it, and `md2akn` and the page
 import nothing from here. They are tied by *data*, not by code:
-`packages/md2akn/tests/fixtures_units/marker_vocabulary.json`, generated from this
+`tests/fixtures_units/marker_vocabulary.json` of `md2akn`'s own repository, generated from this
 module by `scripts/verify_scjn_outline.py --write-vocabulary` (one example marker
 per `classify` branch, the kinds and container types, the real distribution over
 the four corpora), is regenerated and compared here and parsed by `md2akn`'s tests.
@@ -63,7 +63,7 @@ the four corpora), is regenerated and compared here and parsed by `md2akn`'s tes
 disk: each marker round-trips through `marker_line`/`parse_marker`, equals `classify`
 of its label, and `strip_markers` of the rebuilt body is the `outline=False` text.
 
-What this writer promises is rules W1 to W3 of `packages/md2akn/RULES.md`, and what a reader
+What this writer promises is rules W1 to W3 of `md2akn`'s `RULES.md`, and what a reader
 makes of it is that file's layers S and B (issue #304).
 """
 

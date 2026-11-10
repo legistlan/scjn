@@ -19,6 +19,8 @@ should ever call it and then publish on its own.
     ./scripts/empaqueta_scjn_leyes.py
     less scripts/scjn/leyes-release/MANIFEST.md   # read it. all of it.
 
+    # `--repo` is the releases' owner, `scjn.release.release_repository()`:
+    # INGEOTEC/LegalIA until the releases move to this repository.
     # first publish — the release itself, with the small text assets and the
     # reverse index (issue #117) every reader resolves a codNota against:
     cd scripts/scjn/leyes-release
@@ -133,10 +135,9 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-# Run straight from a clone, without `pip install -e packages/nota2md` first.
+# Run straight from a clone, without `pip install -e .` first.
 _RAIZ = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_RAIZ / "packages" / "nota2md"))
-sys.path.insert(0, str(_RAIZ / "packages" / "scjn"))
+sys.path.insert(0, str(_RAIZ))
 
 from scjn.release import (  # noqa: E402
     ASSET_INDICE_GLOBAL,

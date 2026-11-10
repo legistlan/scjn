@@ -17,7 +17,10 @@ classifiers = [
 ]
 # Dependency direction is one way (issue #206/#207): this package imports
 # neither nota2md nor dofjson, so it needs nothing from either of them —
-# nota2md depends on scjn, never the reverse.
+# nota2md depends on scjn, never the reverse. The three crawl scripts that
+# link laws to the DOF (`scripts/discover_federal_laws.py`,
+# `fetch_scjn_legislacion.py`, `recrawl_scjn_outline.py`) do import both,
+# from PyPI: the `scripts` dependency group below, never the package.
 dependencies = [
     "requests>=2.31",
     # scjn.cache's own on-disk cache for the scjn-leyes release (issue #209).
@@ -29,10 +32,18 @@ dynamic = ['version']
 test = ["pytest>=7.0"]
 
 [project.urls]
-Homepage = "https://github.com/INGEOTEC/LegalIA/tree/main/packages/scjn"
+Homepage = "https://github.com/legistlan/scjn"
 
 [project.scripts]
 scjn = "scjn.cli:main"
+
+[dependency-groups]
+# For the three DOF-linking scripts only (see `dependencies` above); not
+# published with the package.
+scripts = [
+    "dofjson>=0.5.0",
+    "nota2md>=0.5.0",
+]
 
 [tool.setuptools.packages.find]
 include = ["scjn", "scjn.*"]

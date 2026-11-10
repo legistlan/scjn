@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# uv lockfile (the package is published; a lock belongs to whoever installs it)
+uv.lock
+
+# Tests / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Sphinx build output
+docs/build/
+
+# The crawl's local scratch: the four corpora, the kept raw SCOW answers
+# (scripts/scjn/raw-api/), the crawl ledgers and the packaged releases the
+# scripts write with --outdir scripts/scjn (the default). Never committed:
+# data lives in releases (see CLAUDE.md).
+/scripts/scjn/
+
+# Local output of one-off runs
+/output/
+
+# Editor / OS
+.DS_Store
+.ropeproject/
+
+# Local Claude Code settings (not shared)
+.claude/settings.local.json

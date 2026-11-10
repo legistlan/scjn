@@ -1,16 +1,19 @@
 # scjn
 
+[![test](https://github.com/legistlan/scjn/actions/workflows/test.yml/badge.svg)](https://github.com/legistlan/scjn/actions/workflows/test.yml)
+[![PyPI](https://badge.fury.io/py/scjn.svg)](https://badge.fury.io/py/scjn)
+
 Client for the SCJN's SCOW JSON API (`https://legislacion.scjn.gob.mx`), the writer of its Markdown
 snapshots and reader of the four SCJN GitHub releases: `scjn-leyes` (a Mexican federal law's
 reform-dated snapshots, keyed by `abrev`) and the id-keyed `scjn-reglamentos`, `scjn-lineamientos` and
 `scjn-tratados` (keyed by `id_ordenamiento`; international treaties are the SCJN's *ámbito*
 `TRATADOS INTERNACIONALES`, any category). Each snapshot carries a `fuente: scjn` provenance header.
 The SCJN is **not** an official source of legal text — the *Diario Oficial de la Federación* (DOF),
-read through [`dofjson`](../dofjson), remains that; this package's crawl is a convenience corpus the
+read through [`dofjson`](https://github.com/legistlan/dofjson), remains that; this package's crawl is a convenience corpus the
 SCJN's own consolidated view makes possible, never a replacement for it.
 
-The package depends on nothing else in this monorepo, and nothing here imports back from `nota2md` or
-`dofjson` (`tests/test_boundary.py`). `scjn.api` is the transport, `scjn.markdown` and `scjn.outline`
+The package depends on no other package of the Legistlan project, and nothing here imports back from
+`nota2md` or `dofjson` (`tests/test_boundary.py`). `scjn.api` is the transport, `scjn.markdown` and `scjn.outline`
 write a snapshot, `scjn.catalog`, `scjn.state` and `scjn.header` are the catalogue's algebra, the
 per-instrument crawl state and the provenance header's reader, `scjn.discovery` is the shared discovery
 of the id-keyed collections, and `scjn.release` holds the release readers (`download_scjn_leyes_corpus`,
@@ -26,7 +29,7 @@ a boolean) and `resumen` (a one-paragraph abstract). They are per law, not
 per reform, so they live in each law's own `estado.json` and in the release
 index, and `download_scjn_leyes_catalog`/`iter_current_federal_laws` return
 them with no extra request — which makes `scjn-leyes` a *classified* corpus.
-`scripts/fetch_federal_law_metadata.py` is what fills them in, one SCJN
+`nota2md`'s `scripts/fetch_federal_law_metadata.py` is what fills them in, one SCJN
 search per law, matched by `idOrdenamiento` so a wrong document can never be
 described as the right one (issue #115, Hallazgo C).
 
@@ -64,14 +67,14 @@ The exit status is non-zero only for a round-trip or an invariance violation. `-
 audits `scjn.api.completeness_defects` (the predicate `articulos_of_reforma` also uses)
 over every raw answer, and `--compare before.json` checks that two runs have the same
 drift classes (how the `scjn.api` → `scjn.markdown` split was shown to change nothing).
-`--write-vocabulary` writes `packages/md2akn/tests/fixtures_units/marker_vocabulary.json`,
+`--write-vocabulary` writes `md2akn`'s `tests/fixtures_units/marker_vocabulary.json` (in that package's own repository),
 the one fixture `scjn`'s and `md2akn`'s tests both read: `md2akn` imports nothing from
 this package, so the marker grammar it reads and the one written here are tied by that
 generated data, never by an import.
 
 ## Changelog
 
-Rule numbers below are those of the day each entry was written; `packages/md2akn/RULES.md` (issue #304) maps every old number to the present layered list (W, S, B, U).
+Rule numbers below are those of the day each entry was written; `md2akn`'s `RULES.md` (issue #304) maps every old number to the present layered list (W, S, B, U).
 
 - **Issue #303 (still 0.5.1):** `scjn.markdown` is the Markdown writer, moved out of
   `scjn.api` with every name re-exported from it (a pure move; the writer-drift classes of
@@ -92,10 +95,10 @@ Rule numbers below are those of the day each entry was written; `packages/md2akn
   Latin suffixes up to `Novodecies`/`Novendecies`, a letter before `(SIC)` —
   where it used to bold only the digits and leave the rest outside. `md2akn`
   matches a block with the `**` stripped, so this was cosmetic for the parse
-  (the ablation of `scripts/embeddings/README.md`, "Measured, repeated
+  (the ablation of the LegalIA monorepo's `scripts/embeddings/README.md`, "Measured, repeated
   numbers", gives the writer a share of 0 of the repeated numbers); it makes
   the Markdown itself say what the article number is. The grammar is a copy
-  of `md2akn`'s, since `scjn` imports nothing else of this monorepo, and
+  of `md2akn`'s, since `scjn` imports no other package of the project, and
   every previous lead stays byte-identical, blanks before the separator
   included.
   **Review fix-2 of #291 (found after the fact, still 0.5.1):** fix-1 had
@@ -164,15 +167,36 @@ Rule numbers below are those of the day each entry was written; `packages/md2akn
   disk-first readers of the `scjn-leyes`/`scjn-reglamentos`/
   `scjn-lineamientos` releases (issues #206-#212, #220, #222).
 
+## The releases' owner
+
+The four releases were first published from the `INGEOTEC/LegalIA` monorepo and still live there:
+`scjn.release.DEFAULT_RELEASE_REPOSITORY` names that owner, and the environment variable
+`SCJN_RELEASE_REPOSITORY` (`<owner>/<name>`, read on every call by `scjn.release.release_repository`)
+points every lookup at another one, which is how a copy of the releases is verified against its new
+home before the default moves. Changing the default is a release of this package.
+
+## The crawl
+
+`scripts/` holds the crawl, from candidates to a packaged release (process A of the project): the
+four `discover_federal_*.py`, `seed_federal_reglamentos.py`, `fetch_scjn_legislacion.py`,
+`resume_scjn_leyes.py`, `recrawl_scjn_outline.py`, `rewrite_scjn_from_raw.py`,
+`verify_scjn_outline.py`, `measure_block_gaps.py`, `find_scjn_table_instruments.py`,
+`empaqueta_scjn_leyes.py` and `empaqueta_scjn_coleccion.py`. They write under `scripts/scjn/`
+(gitignored); every packaging script writes a `PUBLICAR.md` for a human and uploads nothing. Three of
+them (`discover_federal_laws.py`, `fetch_scjn_legislacion.py`, `recrawl_scjn_outline.py`) link laws
+to the DOF and import `dofjson` and `nota2md` from PyPI, never the package: `uv sync --group scripts`
+or `pip install dofjson nota2md`.
+
 ## Tests
 
 ```bash
-pytest packages/scjn -q --ignore=packages/scjn/tests/test_api_red.py \
-    --ignore=packages/scjn/tests/test_release_red.py
+pip install -e ".[test]"
+pytest tests scripts/tests --ignore=tests/test_api_red.py --ignore=tests/test_release_red.py
 ```
 
 The two ignored files make real network calls (the live SCOW API and the real `scjn-leyes`
-release); CI includes them, so check before assuming a failure there is unrelated.
+release); CI runs them in their own `network` job, so check before assuming a failure there is
+unrelated. `scripts/tests` holds the two tests of the crawl scripts.
 
 | File | What it covers |
 |---|---|
@@ -190,25 +214,26 @@ release); CI includes them, so check before assuming a failure there is unrelate
 | `test_site_references.py` | no reference to the retired WebForms site anywhere in the tree |
 | `test_state.py` | crawl state and the row-comparison plan |
 | `test_text.py` | editorial-note removal and instrument grouping |
+| `scripts/tests/test_verify_scjn_outline.py` | the outline verifier on a toy corpus written with the real writer |
+| `scripts/tests/test_find_scjn_table_instruments.py` | the table-instrument finder against a stub API |
 
-Shared helpers live in `tests/conftest.py`, one definition each. To find a test that repeats another
-(same input and assertions, a subset, a parametrisable group, a helper defined in two files) run the
-read-only inventory, which parses the tests without importing them:
-
-```bash
-python scripts/test_inventory.py --suite scjn
-```
-
-After merging or deleting tests, compare line coverage per file by the *set* of covered lines
+Shared helpers live in `tests/conftest.py`, one definition each. After merging or deleting tests, compare line coverage per file by the *set* of covered lines
 (`pytest --cov=scjn --cov-report=json`): a line covered before and not after is a lost test.
 
 ## Development
 
 ```bash
-pip install -e "packages/scjn[test]"
-pytest packages/scjn
+pip install -e ".[test]"
+pytest tests scripts/tests --ignore=tests/test_api_red.py --ignore=tests/test_release_red.py
+python scripts/check_package_versions.py   # the local version is one step ahead of PyPI
 ```
+
+`scjn` was one package of the [LegalIA](https://github.com/INGEOTEC/LegalIA) monorepo,
+`packages/scjn`, until 9 November 2026 (monorepo commit `f403872b1`); this repository carries that
+history, filtered to the package's own files, the crawl scripts and its documentation page, so
+`git log` and `git blame` reach back to the first commit. A `#N` in a commit message is an issue of
+the monorepo.
 
 ## License
 
-Apache License 2.0. See [LICENSE](../../LICENSE).
+Apache License 2.0. See [LICENSE](LICENSE).

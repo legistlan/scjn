@@ -1,13 +1,6 @@
-# Build-time dependencies for the Sphinx docs, kept separate from any
-# package's own pyproject.toml. Every package documented here is installed
-# normally by .readthedocs.yaml, pulling in its own real dependencies
-# (requests, beautifulsoup4, platformdirs, spacy, ...), so nothing but Sphinx
-# and its theme belongs here.
+# Build-time dependencies for the Sphinx docs, kept separate from the
+# package's own pyproject.toml. scjn itself is installed normally by
+# .readthedocs.yaml and test.yml, pulling in its own real dependencies
+# (requests, platformdirs), so nothing but Sphinx and its theme belongs here.
 sphinx>=7
 furo
-
-# sphinx.ext.graphviz (the architecture-flow diagram on the index page) is
-# built into Sphinx itself; it needs the `dot` binary on PATH at build time,
-# installed via build.apt_packages in .readthedocs.yaml. Chosen over
-# sphinxcontrib-mermaid so the rendered docs need no client-side JS/CDN to
-# display the diagram — dot renders it to inline SVG at build time.

@@ -83,9 +83,9 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-# Run straight from a clone, without `pip install -e packages/scjn` first.
+# Run straight from a clone, without `pip install -e .` first.
 _RAIZ = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_RAIZ / "packages" / "scjn"))
+sys.path.insert(0, str(_RAIZ))
 
 from scjn.cache import COLECCIONES_POR_ID  # noqa: E402
 from scjn.catalog import instrumento_key  # noqa: E402
@@ -99,6 +99,7 @@ from scjn.release import (  # noqa: E402
     construye_indice_global_lineamientos,
     construye_indice_global_reglamentos,
     construye_indice_global_tratados,
+    release_repository,
 )
 from scjn.state import lee_estado  # noqa: E402
 
@@ -294,7 +295,7 @@ def _advierte_si_falta_partes_json(destino: Path, partes_originales: list[dict],
         "de lo que cabe en una sola parte. Se genero un reparto nuevo, determinista, pero si "
         "este release ya esta publicado en mas de una parte, siembralo desde la realidad antes "
         "de publicar:\n"
-        f"  gh release view {base_tag} --repo INGEOTEC/LegalIA "
+        f"  gh release view {base_tag} --repo {release_repository()} "
         "--json assets --jq '.assets[].name'   # repite por cada parte ya publicada",
         file=sys.stderr,
     )
@@ -495,7 +496,7 @@ def escribe_partes(destino: Path, coleccion: str, partes: list[dict],
         )
 
 
-def genera_publicar(coleccion: str, partes: list[dict], repo: str = "INGEOTEC/LegalIA",
+def genera_publicar(coleccion: str, partes: list[dict], repo: str | None = None,
                      solo: set[str] | None = None) -> str:
     """`PUBLICAR.md` -- the exact, copy-pasteable `gh` command sequence for
     the corpus as it actually is (issue #223, decision 8): one
@@ -509,6 +510,9 @@ def genera_publicar(coleccion: str, partes: list[dict], repo: str = "INGEOTEC/Le
     those tarballs changed on disk, so only their part needs a fresh
     ``gh release upload --clobber``, never a fresh ``release create``.
     """
+    # The releases' owner, unless a caller names one: INGEOTEC/LegalIA until
+    # they move to this repository (`SCJN_RELEASE_REPOSITORY` overrides it).
+    repo = repo or release_repository()
     lineas = ["# Publicar — comandos generados, correr a mano (issue #115, Hallazgo C)", ""]
 
     if solo is not None:

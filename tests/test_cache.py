@@ -144,7 +144,7 @@ class TestMigrateLegacyAssets(unittest.TestCase):
     before, so whatever a downstream package's own `download` verb already
     cached under its own directory has to be handed over once. Always
     exercised against `tmp_path`-style fixtures here, never the real
-    filesystem's default cache directories (see `packages/scjn/tests/conftest.py`
+    filesystem's default cache directories (see `tests/conftest.py`
     and the run notes: an automated test must not touch a real, possibly
     ~380 MB, cache)."""
 

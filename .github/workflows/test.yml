@@ -1,0 +1,99 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  # The routine suite: the SCOW API and GitHub are mocked (the two files that
+  # reach the real services run in the `network` job below), plus the two
+  # tests of the crawl scripts under scripts/tests.
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install package and test dependencies
+        run: pip install -e ".[test]"
+      - name: Run tests
+        run: |
+          pytest tests scripts/tests \
+            --ignore=tests/test_api_red.py --ignore=tests/test_release_red.py
+
+  # The two files that make real network calls: the live SCOW API
+  # (test_api_red.py) and the real scjn-leyes release (test_release_red.py).
+  # Their own job, so an SCJN outage fails one cell and not the matrix. The
+  # release listing is one request to api.github.com, where an unauthenticated
+  # runner IP gets 60 requests an hour and a busy one runs out (LegalIA's pull
+  # request #298); scjn.release sends the token only when it is set, so this is
+  # a CI convenience, not a requirement.
+  network:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install package and test dependencies
+        run: pip install -e ".[test]"
+      - name: Run the network tests
+        run: pytest tests/test_api_red.py tests/test_release_red.py
+
+  # Sphinx gate: a strict HTML build (any broken cross-reference or other
+  # warning fails it) plus the documentation's worked examples run for real
+  # against the cached releases (disk-first reads: the two `scjn download`
+  # steps put the assets the page exercises on disk first). Read the Docs'
+  # own build stays HTML-only and never touches the network (LegalIA's issue
+  # #195, inherited with the page).
+  docs:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Cache scjn's on-disk release cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/scjn
+          # actions/cache never saves over an existing key: bump it when the
+          # examples need an asset the cached release no longer matches.
+          key: docs-cache-v1
+      - name: Install docs and package dependencies
+        run: |
+          pip install -r docs/requirements.txt
+          pip install -e .
+      - name: Download the scjn-leyes assets the docs exercise
+        run: scjn download --slug lfca
+      - name: Download the scjn-reglamentos asset the docs exercise
+        run: scjn download --coleccion reglamentos --id 104906
+      - name: Build the docs strictly
+        run: python -m sphinx -n -W --keep-going -b html docs/source docs/build/html
+      - name: Run the documentation's doctest examples
+        run: python -m sphinx -b doctest docs/source docs/build/doctest
+
+  # Hard gate on the single-step-ahead rule (LegalIA's issue #194, inherited
+  # with the package): __version__ may not jump more than one release past
+  # what is published on PyPI.
+  check-package-versions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install checker dependencies
+        run: pip install packaging
+      - name: Check package versions against PyPI
+        run: python scripts/check_package_versions.py

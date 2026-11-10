@@ -18,7 +18,7 @@ import sys
 from pathlib import Path
 
 _RAIZ = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_RAIZ / "packages" / "scjn"))
+sys.path.insert(0, str(_RAIZ))
 
 from scjn.api import articulos_a_markdown, articulos_de_crudo  # noqa: E402
 

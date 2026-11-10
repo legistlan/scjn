@@ -2,10 +2,11 @@
 
 An integration test, not a unit test: it downloads `indice-global.json.gz` and
 one law's own tarball over the network, so it is excluded from the routine
-run the same way `packages/nota2md/tests/test_leyes_44.py` is:
+run the same way `nota2md`'s `test_leyes_44.py` is from its own:
 
-    pytest packages/scjn -q --ignore=packages/scjn/tests/test_release_red.py \\
-        --ignore=packages/scjn/tests/test_api_red.py
+    pytest tests -q --ignore=tests/test_release_red.py --ignore=tests/test_api_red.py
+
+CI runs it in its own `network` job (`test.yml`).
 
 What it is here to catch is the one thing no fabricated tarball can: that the
 asset actually published matches what the readers expect — a corpus

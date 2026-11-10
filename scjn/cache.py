@@ -106,9 +106,12 @@ class Coleccion:
 REGLAMENTOS = Coleccion(
     nombre="reglamentos", tag_base=_SCJN_REGLAMENTOS_RELEASE, subdirectorio=_SCJN_REGLAMENTOS_RELEASE
 )
+#: `lineamientos`, keyed by `id_ordenamiento` (issue #222).
 LINEAMIENTOS = Coleccion(
     nombre="lineamientos", tag_base=_SCJN_LINEAMIENTOS_RELEASE, subdirectorio=_SCJN_LINEAMIENTOS_RELEASE
 )
+#: `tratados`, keyed by `id_ordenamiento` (issue #277): the SCJN's *ámbito*
+#: `TRATADOS INTERNACIONALES`, any category.
 TRATADOS = Coleccion(
     nombre="tratados", tag_base=_SCJN_TRATADOS_RELEASE, subdirectorio=_SCJN_TRATADOS_RELEASE
 )

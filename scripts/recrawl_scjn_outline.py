@@ -44,10 +44,11 @@ import sys
 import time
 from pathlib import Path
 
+# `fetch_scjn_legislacion` (beside this script) imports `dofjson` and `nota2md`,
+# which come from PyPI (`pip install dofjson nota2md`, or `uv sync --group scripts`).
 _RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_RAIZ / "scripts"))
-sys.path.insert(0, str(_RAIZ / "packages" / "nota2md"))
-sys.path.insert(0, str(_RAIZ / "packages" / "scjn"))
+sys.path.insert(0, str(_RAIZ))
 
 import fetch_scjn_legislacion as fetch  # noqa: E402
 from scjn import api as scjn_api  # noqa: E402

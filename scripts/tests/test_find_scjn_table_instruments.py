@@ -1,5 +1,5 @@
 """`scripts/find_scjn_table_instruments.py` (issue #255, review fix), against
-a stub SCJN API -- no network. Not part of `pytest packages/scjn` (this
+a stub SCJN API -- no network. Not part of `pytest tests` (this
 directory is orchestration, not a package): run directly with
 
     pytest scripts/tests -q
@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "packages" / "scjn"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 import find_scjn_table_instruments as fst  # noqa: E402
 from scjn.api import Articulo, Reforma, ScjnApiError  # noqa: E402

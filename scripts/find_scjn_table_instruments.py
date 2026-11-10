@@ -56,10 +56,10 @@ import json
 import sys
 from pathlib import Path
 
-# Run straight from a clone, without `pip install -e packages/scjn` first —
+# Run straight from a clone, without `pip install -e .` first —
 # the same convention `fetch_scjn_legislacion.py` already uses.
 _RAIZ = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_RAIZ / "packages" / "scjn"))
+sys.path.insert(0, str(_RAIZ))
 
 from scjn.api import ScjnApi, ScjnApiError  # noqa: E402
 from scjn.cache import COLECCIONES_POR_ID  # noqa: E402

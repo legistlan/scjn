@@ -1,13 +1,20 @@
 :mod:`scjn`
 ============
 
-.. image:: https://github.com/INGEOTEC/LegalIA/actions/workflows/test.yml/badge.svg
-        :target: https://github.com/INGEOTEC/LegalIA/actions/workflows/test.yml
+.. image:: https://github.com/legistlan/scjn/actions/workflows/test.yml/badge.svg
+        :target: https://github.com/legistlan/scjn/actions/workflows/test.yml
 
 .. image:: https://badge.fury.io/py/scjn.svg
         :target: https://badge.fury.io/py/scjn
 
-Version |scjn_version| — see :doc:`index` for the full package table.
+.. py:module:: scjn
+
+Version |scjn_version|. ``scjn`` is one package of the Legistlan project
+(the ``legistlan`` organization on GitHub), extracted from the
+``INGEOTEC/LegalIA`` monorepo in November 2026 with its history; the
+references of its siblings (``dofjson``, ``nota2md``, ``md2akn``,
+``legalvec``) are at `legalia.readthedocs.io <https://legalia.readthedocs.io/>`_
+until each has a project of its own.
 
 :py:mod:`scjn` is the client for the Suprema Corte de Justicia de la
 Nación's SCOW JSON API (:py:mod:`scjn.api`, the backend of
@@ -19,14 +26,14 @@ Mexican federal law's reform-dated snapshots, one tarball per law
 one tarball per instrument (``scjn-reglamentos``); and, since issue #222,
 every federal *lineamiento* the SCJN has, on the same id-keyed shape
 (``scjn-lineamientos``); and, since issue #277, every international *treaty*
-the SCJN serves, on that same shape (``scjn-tratados``). It was extracted out of :py:mod:`nota2md`'s own
+the SCJN serves, on that same shape (``scjn-tratados``). It was extracted out of ``nota2md``'s own
 modules (issue #206): Fase 1 (#207) moved the
 transport, the catalogue's own algebra (:py:mod:`scjn.catalog`),
 per-instrument crawl state (:py:mod:`scjn.state`) and the provenance header's
 reader (:py:mod:`scjn.header`); Fase 3 (#209) moved the release's readers
 here too, disk-first and with their own cache directory
-(:py:mod:`scjn.cache`). :py:mod:`nota2md` depends on this package; this
-package depends on nothing in this monorepo — its dependency direction is
+(:py:mod:`scjn.cache`). ``nota2md`` depends on this package; this
+package depends on no other package of the project — its dependency direction is
 one way, enforced by ``tests/test_boundary.py``'s own grep for
 ``nota2md``/``dofjson``.
 
@@ -34,7 +41,7 @@ Two things worth stating explicitly before the API, because nothing in the
 signatures below conveys them:
 
 - **What** ``fuente: scjn`` **means.** The SCJN is not an official source of
-  legal text — ``dof.gob.mx``/SIDOF (:py:mod:`dofjson`) remains that. Every
+  legal text — ``dof.gob.mx``/SIDOF (``dofjson``) remains that. Every
   file this package's crawl writes, and every snapshot the ``scjn-leyes``
   release ships, keeps that header intact, so whoever reads the result can
   tell where it came from — unchanged by this epic.
@@ -56,7 +63,7 @@ discovery scripts, issue #222's Fase 0), :py:mod:`scjn.catalog`
 crawl state and completeness), :py:mod:`scjn.header` (reading a crawl's own
 output back off disk), :py:mod:`scjn.cache` (the on-disk cache
 :py:mod:`scjn.release` reads and the one-time migration out of
-:py:mod:`nota2md`'s), :py:mod:`scjn.cli` (the ``scjn`` console script). Every
+``nota2md``'s), :py:mod:`scjn.cli` (the ``scjn`` console script). Every
 class and function is documented, including private/internal helpers
 (leading-underscore names) — useful when extending or debugging the package,
 though they are not part of its public API and can change without notice.
@@ -72,14 +79,14 @@ the doctest job unaffordable.
 -------------------------------------
 
 Every reader here is disk-only (issue #209): none of them make an HTTP
-request, and a missing asset raises :py:exc:`~scjn.AssetNotCached` rather
-than attempting one. Only :py:func:`~scjn.download_scjn_leyes_assets` (and,
+request, and a missing asset raises :py:exc:`~scjn.release.AssetNotCached` rather
+than attempting one. Only :py:func:`~scjn.release.download_scjn_leyes_assets` (and,
 through it, the ``scjn download`` CLI below) talks to the network — run it
 once and every reader afterwards is offline.
 
 >>> import scjn
 
-:py:func:`~scjn.download_scjn_leyes_index` reads the release's reverse
+:py:func:`~scjn.release.download_scjn_leyes_index` reads the release's reverse
 index — every ``codNota`` the corpus can resolve, mapped to the law(s) it
 reforms — a few hundred KB against the corpus' 380 MB:
 
@@ -91,7 +98,7 @@ reforms — a few hundred KB against the corpus' 380 MB:
 >>> indice["codNota"][5788357]
 [{'slug': 'lfca', 'archivo': '22-05-2026.md', 'title_link_status': 'linked', 'content_diff_confirmed_codNota': None, 'content_diff_score': None}]
 
-:py:func:`~scjn.download_scjn_leyes_corpus` reads one law's own tarball
+:py:func:`~scjn.release.download_scjn_leyes_corpus` reads one law's own tarball
 whole — every snapshot, its ``indice.json`` fields, and the DOF notes that
 were considered while linking it, so the link can be audited without going
 back to the network:
@@ -102,13 +109,13 @@ back to the network:
 >>> [(s["codNota"], s["fecha_publicacion"]) for s in corpus["snapshots"]]
 [(5788357, '22-05-2026')]
 
-:py:func:`~scjn.markdown_de_snapshot` reads just one snapshot's text out of
+:py:func:`~scjn.release.markdown_de_snapshot` reads just one snapshot's text out of
 that same tarball, without decoding the rest of it:
 
 >>> scjn.markdown_de_snapshot("lfca", "22-05-2026.md").startswith("---\nfuente: scjn")
 True
 
-:py:func:`~scjn.iter_current_federal_laws` yields the *current* text of
+:py:func:`~scjn.release.iter_current_federal_laws` yields the *current* text of
 every federal law the release publishes — one tarball opened, its newest
 snapshot read, and its bytes dropped before the next law, so walking the
 whole corpus never holds more than one law in memory at a time.
@@ -141,14 +148,14 @@ publishes no abstract for it, so ``resumen`` is ``None`` here and the key is
 missing outright from the catalogue entry below, rather than carrying a null
 that would read as "the SCJN says nothing" when it means "nobody asked".
 
-:py:func:`~scjn.local_slugs` is the disk-first answer to "which laws does
+:py:func:`~scjn.release.local_slugs` is the disk-first answer to "which laws does
 this machine have" — no HTTP request, and what ``slugs=None`` above resolves
 through:
 
 >>> "lfca" in scjn.local_slugs()
 True
 
-:py:func:`~scjn.download_scjn_leyes_catalog` reads the federal-law catalogue
+:py:func:`~scjn.release.download_scjn_leyes_catalog` reads the federal-law catalogue
 the release already publishes — the seed the Cámara de Diputados used to be
 scraped for (issue #184). ``freshness=False`` skips every law's own tarball
 (the default reads all ~315 of them for the ``actualizado`` freshness date)
@@ -168,11 +175,11 @@ False
 The three metadata fields come from the index too, so they survive
 ``freshness=False``; with ``freshness=True`` a law's own ``estado.json``
 wins over the index for them, since that is the record its next repack
-publishes. ``scripts/fetch_federal_law_metadata.py`` is what writes them
+publishes. ``nota2md``'s ``scripts/fetch_federal_law_metadata.py`` is what writes them
 (one SCJN search per law, matched by ``idOrdenamiento`` so a wrong document
 can never be described as the right one).
 
-A ``codNota``/law/asset not yet cached raises :py:exc:`~scjn.AssetNotCached`,
+A ``codNota``/law/asset not yet cached raises :py:exc:`~scjn.release.AssetNotCached`,
 naming the exact ``scjn download`` command that populates it:
 
 >>> try:
@@ -186,7 +193,7 @@ naming the exact ``scjn download`` command that populates it:
 
 Every federal *reglamento* the SCJN has, published as a sibling release
 alongside ``scjn-leyes`` — same disk-first contract (every reader here is
-offline too, and :py:exc:`~scjn.AssetNotCached` names the right ``scjn
+offline too, and :py:exc:`~scjn.release.AssetNotCached` names the right ``scjn
 download --coleccion reglamentos`` command), but a narrower corpus: no
 ``abrev`` (the SCJN reissues a reglamento as a brand-new ``idOrdenamiento``
 rather than as a reform of the previous one, so a title-derived key would
@@ -241,7 +248,7 @@ collection lives across two release tags today, ``scjn-reglamentos`` (997
 tarballs, part 1) and ``scjn-reglamentos-2`` (the other 85). Every reader
 below resolves the whole series transparently — a caller never names a part.
 
-:py:func:`~scjn.download_scjn_reglamentos_assets` is the one function below
+:py:func:`~scjn.release.download_scjn_reglamentos_assets` is the one function below
 that talks to the network — every reader after it assumes it (or the ``scjn
 download --coleccion reglamentos`` CLI built on it) already ran:
 
@@ -249,7 +256,7 @@ download --coleccion reglamentos`` CLI built on it) already ran:
 >>> sorted(ruta.name for ruta, _ in resultados)
 ['104906.tgz', 'indice-global.json.gz']
 
-:py:func:`~scjn.download_scjn_reglamentos_index` reads the release's own
+:py:func:`~scjn.release.download_scjn_reglamentos_index` reads the release's own
 reverse listing — no ``codNota`` section (this corpus has no DOF linking at
 all yet), keyed by ``id_ordenamiento``:
 
@@ -261,7 +268,7 @@ all yet), keyed by ``id_ordenamiento``:
 >>> indice["instrumentos"]["104906"]["categoria_ordenamiento"]
 'ACUERDO (S)'
 
-:py:func:`~scjn.download_scjn_reglamentos_corpus` reads one instrument back
+:py:func:`~scjn.release.download_scjn_reglamentos_corpus` reads one instrument back
 — oldest snapshot first, each with its own provenance header (no
 ``indice.json``/``notas/`` here, unlike a law's own tarball: this corpus has
 nothing to link a snapshot's `codNota` against):
@@ -273,14 +280,14 @@ nothing to link a snapshot's `codNota` against):
 >>> lineas[0], lineas[1]
 ('---', 'fuente: scjn')
 
-:py:func:`~scjn.local_reglamentos_ids` is the disk-first "what does this
+:py:func:`~scjn.release.local_reglamentos_ids` is the disk-first "what does this
 machine already have", no network at all:
 
 >>> "104906" in release.local_reglamentos_ids()
 True
 
-:py:func:`~scjn.iter_current_reglamentos` is
-:py:func:`~scjn.iter_current_federal_laws`' id-keyed sibling (issue #227):
+:py:func:`~scjn.release.iter_current_reglamentos` is
+:py:func:`~scjn.release.iter_current_federal_laws`' id-keyed sibling (issue #227):
 the *current* text of each instrument — one tarball opened, its newest
 snapshot read, its bytes dropped before the next id — which is what a corpus
 build walks. There is no ``indice.json`` in an id-keyed tarball, so "newest"
@@ -303,10 +310,10 @@ chase.
 
 An instrument the index lists with no consolidated text at all (``snapshots:
 0`` — 5 reglamentos, 37 lineamientos, issue #222's decision 6) is **skipped**
-by this iterator rather than raising :py:exc:`~scjn.SinTextoEnSCJN`: a corpus
+by this iterator rather than raising :py:exc:`~scjn.release.SinTextoEnSCJN`: a corpus
 walk should not have to catch an exception per instrument the SCJN never
 published text for. Asking for one by name is where that exception still
-belongs, and :py:func:`~scjn.download_scjn_reglamentos_corpus` still raises it.
+belongs, and :py:func:`~scjn.release.download_scjn_reglamentos_corpus` still raises it.
 
 ``scjn-lineamientos`` — the third collection (issue #222)
 ------------------------------------------------------------
@@ -339,22 +346,22 @@ and the same decision 6 rule: an instrument with ``snapshots: 0`` gets no
 >>> "asset" in indice["instrumentos"]["96090"]
 False
 
-:py:func:`~scjn.download_scjn_lineamientos_index`,
-:py:func:`~scjn.download_scjn_lineamientos_corpus`,
-:py:func:`~scjn.download_scjn_lineamientos_assets`,
-:py:func:`~scjn.local_lineamientos_ids` and :py:exc:`~scjn.SinTextoEnSCJN`
-are the exact wrappers :py:func:`~scjn.download_scjn_reglamentos_index` and
+:py:func:`~scjn.release.download_scjn_lineamientos_index`,
+:py:func:`~scjn.release.download_scjn_lineamientos_corpus`,
+:py:func:`~scjn.release.download_scjn_lineamientos_assets`,
+:py:func:`~scjn.release.local_lineamientos_ids` and :py:exc:`~scjn.release.SinTextoEnSCJN`
+are the exact wrappers :py:func:`~scjn.release.download_scjn_reglamentos_index` and
 its siblings are (decision 7: every published name stays per-collection,
 symmetric across both) — sharing the same generic core
 (:py:func:`~scjn.release._index_de_release`,
 :py:func:`~scjn.release._corpus_de_release`,
 :py:func:`~scjn.release._local_ids_de_release`,
 :py:func:`~scjn.release._download_assets_de_release`) and the exact same
-raise-order contract :py:exc:`~scjn.AssetNotCached`/:py:exc:`~scjn.SinTextoEnSCJN`
+raise-order contract :py:exc:`~scjn.release.AssetNotCached`/:py:exc:`~scjn.release.SinTextoEnSCJN`
 document on those functions (decision 10): a cold cache raises
-:py:exc:`~scjn.AssetNotCached` for the index first, and only once the index
-says an id has no asset does :py:func:`~scjn.download_scjn_lineamientos_corpus`
-raise :py:exc:`~scjn.SinTextoEnSCJN` instead of reaching for a tarball that
+:py:exc:`~scjn.release.AssetNotCached` for the index first, and only once the index
+says an id has no asset does :py:func:`~scjn.release.download_scjn_lineamientos_corpus`
+raise :py:exc:`~scjn.release.SinTextoEnSCJN` instead of reaching for a tarball that
 does not exist.
 
 **Not yet live**, unlike ``scjn-reglamentos`` above — issue #222 generated
@@ -365,13 +372,13 @@ A live example the same shape as ``scjn-reglamentos``' own (an actual
 ``download_scjn_lineamientos_assets``/``_index``/``_corpus``/
 ``local_lineamientos_ids`` walk against a real ``id_ordenamiento``) belongs
 here as a follow-up, once the release is published — until then this
-behaviour is verified by ``packages/scjn/tests/test_release.py``'s
+behaviour is verified by ``tests/test_release.py``'s
 ``TestScjnLineamientos`` class against a synthetic on-disk release, the same
 posture :py:mod:`scjn.api` takes toward the live SCJN below.
 
-:py:func:`~scjn.iter_current_lineamientos` (issue #227) falls under that same
+:py:func:`~scjn.release.iter_current_lineamientos` (issue #227) falls under that same
 exception, and for the same reason: it is the exact wrapper
-:py:func:`~scjn.iter_current_reglamentos` is — both are four lines over
+:py:func:`~scjn.release.iter_current_reglamentos` is — both are four lines over
 :py:func:`~scjn.release._iter_current_de_release`, documented with a live
 example above — over a release that is not published yet.
 ``TestIterCurrentPorId`` covers it against a synthetic on-disk release.
@@ -417,19 +424,19 @@ builder for this release's own index, the exact sibling of
 >>> "asset" in indice["instrumentos"]["2024"]
 False
 
-:py:func:`~scjn.download_scjn_tratados_index`,
-:py:func:`~scjn.download_scjn_tratados_corpus`,
-:py:func:`~scjn.download_scjn_tratados_assets`,
-:py:func:`~scjn.local_tratados_ids` and :py:func:`~scjn.iter_current_tratados`
+:py:func:`~scjn.release.download_scjn_tratados_index`,
+:py:func:`~scjn.release.download_scjn_tratados_corpus`,
+:py:func:`~scjn.release.download_scjn_tratados_assets`,
+:py:func:`~scjn.release.local_tratados_ids` and :py:func:`~scjn.release.iter_current_tratados`
 are the exact wrappers their reglamentos siblings are, over the same generic
-core and the same :py:exc:`~scjn.AssetNotCached`/:py:exc:`~scjn.SinTextoEnSCJN`
+core and the same :py:exc:`~scjn.release.AssetNotCached`/:py:exc:`~scjn.release.SinTextoEnSCJN`
 raise order.
 
 **Not yet live**, same posture as ``scjn-lineamientos`` above: issue #277
 crawled and packaged the corpus and generated its publish plan
 (``PUBLICAR.md``), but a human has not run it (issue #115, Hallazgo C), so
 there is no ``scjn-tratados`` release on GitHub for a doctest here to
-download from. ``packages/scjn/tests/test_release.py``'s ``TestScjnTratados``
+download from. ``tests/test_release.py``'s ``TestScjnTratados``
 class verifies the behaviour against a synthetic on-disk release instead.
 
 .. automodule:: scjn.release
@@ -448,14 +455,14 @@ crawler (issue #172, retired in #179). A doctest per endpoint would put the
 docs gate at the mercy of the SCJN's own uptime, and crawling is not a
 caller-facing API the way the readers above are — a caller never
 instantiates :py:class:`~scjn.api.ScjnApi` directly, only the
-``scjn download`` CLI (or ``scripts/fetch_scjn_legislacion.py`` /
-``scripts/fetch_federal_law_metadata.py``) does. This behaviour is instead
+``scjn download`` CLI (or ``scripts/fetch_scjn_legislacion.py`` here, and
+``nota2md``'s ``scripts/fetch_federal_law_metadata.py``) does. This behaviour is instead
 verified for real, against the live service, by
-``packages/scjn/tests/test_api_red.py`` — not silently skipped, exactly the
+``tests/test_api_red.py`` — not silently skipped, exactly the
 mechanism `document2md <https://document2md.readthedocs.io/>`_'s OCR paths
 already use for ``mineru``.
 
-The Markdown writer below it (:py:func:`~scjn.api.articulos_a_markdown` and
+The Markdown writer below it (:py:func:`~scjn.markdown.articulos_a_markdown` and
 what it calls) touches no network, so it keeps a verified example like every
 other symbol on this page. A blank-line-separated block of an article's
 ``contenido`` that carries a tab is the one shape it treats differently

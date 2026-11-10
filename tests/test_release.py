@@ -1584,3 +1584,37 @@ class TestIterCurrentPorId(ConCacheFixtureReglamentos):
         self.assertIsNone(instrumento["nombre"])
         self.assertIsNone(instrumento["materia"])
         self.assertEqual(instrumento["markdown"], "x")
+
+
+class TestReleaseRepository(unittest.TestCase):
+    """`release_repository` and `release_api_url`: the releases' owner is
+    `DEFAULT_RELEASE_REPOSITORY` unless `SCJN_RELEASE_REPOSITORY` names another
+    one, read on every call -- how a copy of the releases is verified against
+    its new owner before the default moves."""
+
+    def test_sin_variable_el_dueno_es_el_predeterminado(self):
+        with patch.dict(os.environ, {release.RELEASE_REPOSITORY_VARIABLE: "  "}):
+            self.assertEqual(release.release_repository(), release.DEFAULT_RELEASE_REPOSITORY)
+            self.assertEqual(
+                release.release_api_url("scjn-leyes"),
+                f"https://api.github.com/repos/{release.DEFAULT_RELEASE_REPOSITORY}"
+                "/releases/tags/scjn-leyes",
+            )
+
+    def test_la_variable_nombra_otro_dueno_sin_espacios(self):
+        with patch.dict(os.environ, {release.RELEASE_REPOSITORY_VARIABLE: " legistlan/scjn \n"}):
+            self.assertEqual(release.release_repository(), "legistlan/scjn")
+            self.assertEqual(
+                release.release_api_url("scjn-leyes-2"),
+                "https://api.github.com/repos/legistlan/scjn/releases/tags/scjn-leyes-2",
+            )
+
+    @patch("requests.get")
+    def test_el_listado_de_assets_pregunta_al_dueno_de_la_variable(self, mock_get):
+        mock_get.return_value = _FakeResponse(200, _pagina_assets({}))
+        with patch.dict(os.environ, {release.RELEASE_REPOSITORY_VARIABLE: "legistlan/scjn"}):
+            release._assets_de_release("scjn-leyes", 30)
+        self.assertEqual(
+            mock_get.call_args.args[0],
+            "https://api.github.com/repos/legistlan/scjn/releases/tags/scjn-leyes",
+        )

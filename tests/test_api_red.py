@@ -5,7 +5,9 @@ An integration test, not a unit test: it talks to
 routine run the same way `nota2md`'s `test_scjn_release_red.py` and
 `test_leyes_44.py` are excluded from theirs:
 
-    pytest packages/scjn -q --ignore=packages/scjn/tests/test_api_red.py
+    pytest tests -q --ignore=tests/test_api_red.py
+
+CI runs it in its own `network` job (`test.yml`).
 
 `lfca` is the case that motivated the whole migration (issue #172): the
 WebForms `scjn.buscar` returns 0 candidates for it, while the new index has

@@ -45,6 +45,28 @@ _HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; LegalIA-scjn/1.0)"}
 #: -- `GH_TOKEN` before `GITHUB_TOKEN`, the `gh` CLI's own precedence.
 _TOKEN_VARIABLES = ("GH_TOKEN", "GITHUB_TOKEN")
 
+#: The repository that owns the four releases, as ``<owner>/<name>``, when
+#: `RELEASE_REPOSITORY_VARIABLE` is not set. The releases were first published
+#: from the `INGEOTEC/LegalIA` monorepo and still live there; the variable
+#: lets a copy of them be verified against its new owner before this default
+#: moves (changing it is a release of this package).
+DEFAULT_RELEASE_REPOSITORY = "INGEOTEC/LegalIA"
+RELEASE_REPOSITORY_VARIABLE = "SCJN_RELEASE_REPOSITORY"
+
+
+def release_repository() -> str:
+    """The ``<owner>/<name>`` repository the release lookups ask GitHub about:
+    `RELEASE_REPOSITORY_VARIABLE` from the environment when it is set to
+    something other than whitespace, else `DEFAULT_RELEASE_REPOSITORY`. Read
+    on every call, so a test or a verification run can point one process at
+    another owner without reloading the module."""
+    return os.environ.get(RELEASE_REPOSITORY_VARIABLE, "").strip() or DEFAULT_RELEASE_REPOSITORY
+
+
+def release_api_url(tag: str) -> str:
+    """The GitHub REST API URL of the release tagged `tag` in `release_repository`."""
+    return f"https://api.github.com/repos/{release_repository()}/releases/tags/{tag}"
+
 
 def _github_api_headers() -> dict:
     """`_HEADERS` plus `Authorization: Bearer <token>` when `GH_TOKEN` or
@@ -81,8 +103,8 @@ LIMITE_ASSETS_POR_RELEASE = 1000
 #: raise, not loop forever.
 _MAX_PARTES = 50
 
-#: The reverse index published alongside the per-law tarballs: the union of
-#: every `indice.json`, inverted by codNota and stripped of all text, so
+#: The reverse index published alongside the per-law tarballs, the union of
+#: every `indice.json` inverted by codNota and stripped of all text, so
 #: resolving "which law does this codNota reform" costs a few hundred KB
 #: instead of the ~380 MB the whole corpus weighs.
 ASSET_INDICE_GLOBAL = "indice-global.json.gz"
@@ -236,7 +258,7 @@ def _assets_de_release(tag: str, timeout: int) -> dict[str, str] | None:
     ends here). Any other error status raises (`raise_for_status`), so a
     rate limit (403) or an outage (5xx) is never mistaken for "no more
     parts" (issue #223)."""
-    url = f"https://api.github.com/repos/INGEOTEC/LegalIA/releases/tags/{tag}"
+    url = release_api_url(tag)
     response = requests.get(url, headers=_github_api_headers(), timeout=timeout)
     if response.status_code == 404:
         return None
@@ -899,7 +921,7 @@ def construye_indice_global_lineamientos(instrumentos: list[dict], generado: str
 def construye_indice_global_tratados(instrumentos: list[dict], generado: str) -> dict:
     """The `scjn-tratados` release's own `indice-global.json.gz` payload —
     the `tratados` sibling of `construye_indice_global_lineamientos` (issue
-    #277), same shape, `coleccion: "tratados"`::
+    #277), same shape, `coleccion: "tratados"`:
 
     >>> from scjn import release
     >>> indice = release.construye_indice_global_tratados(

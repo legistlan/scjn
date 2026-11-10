@@ -1,0 +1,20 @@
+version: 2
+
+build:
+  os: "ubuntu-22.04"
+  tools:
+    python: "3.12"
+  jobs:
+    post_install:
+      # The package itself, with its real dependencies (requests,
+      # platformdirs), so autodoc can import it and docs/source/conf.py can
+      # read its __version__. The build is HTML-only: the examples on the page
+      # run for real in test.yml's `docs` job, never here.
+      - pip install -e .
+
+sphinx:
+  configuration: docs/source/conf.py
+
+python:
+  install:
+    - requirements: docs/requirements.txt

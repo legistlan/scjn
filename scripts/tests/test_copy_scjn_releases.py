@@ -371,3 +371,12 @@ class TestDownload:
                 mock.patch.object(c.time, "sleep") as sleep:
             assert c.download(SRC, "t", outdir, {"a.tgz": (3, None)}) == 1
         assert len(calls) == 3 and sleep.call_args_list == [mock.call(60)]
+
+
+class TestRun:
+    def test_a_failed_gh_ends_with_its_stderr_and_exit_1(self, gh, monkeypatch):
+        monkeypatch.setattr(c, "main", mock.Mock(side_effect=_failure("HTTP 403: rate limit")))
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            assert c.run([SRC]) == 1
+        assert "HTTP 403: rate limit" in err.getvalue() and "run the same command again" in err.getvalue()

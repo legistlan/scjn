@@ -237,13 +237,13 @@ def copy_tag(source: str, destination: str, tag: str, outdir: Path, batch: int,
     if dst is None:
         outdir.mkdir(parents=True, exist_ok=True)
         notes.write_text(src["body"], encoding="utf-8")
-        gh(*create[1:])
+        retrying(lambda: gh(*create[1:]), f"{tag}: release create")
         print(f"{tag}: release created in {destination}", flush=True)
     elif not (_same_text(src["title"], dst["title"]) and _same_text(src["body"], dst["body"])):
         outdir.mkdir(parents=True, exist_ok=True)
         notes.write_text(src["body"], encoding="utf-8")
-        gh("release", "edit", tag, "-R", destination, "--title", src["title"],
-           "--notes-file", str(notes))
+        retrying(lambda: gh("release", "edit", tag, "-R", destination, "--title", src["title"],
+                            "--notes-file", str(notes)), f"{tag}: release edit")
         print(f"{tag}: title and body brought to the source's", flush=True)
     for i in range(0, len(todo), batch):
         files = [folder / n for n in todo[i:i + batch]]
@@ -325,5 +325,15 @@ def main(argv=None) -> int:
     return 0
 
 
+def run(argv=None) -> int:
+    """`main`, but a failed `gh` ends with its stderr on the last line, not a traceback."""
+    try:
+        return main(argv)
+    except subprocess.CalledProcessError as exc:
+        print(f"{' '.join(map(str, exc.cmd))[:300]}\n{(exc.stderr or '').strip()[:500]}\n"
+              "stopped; run the same command again to resume", file=sys.stderr, flush=True)
+        return 1
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(run())

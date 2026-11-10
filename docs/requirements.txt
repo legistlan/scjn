@@ -1,6 +1,6 @@
 # Build-time dependencies for the Sphinx docs, kept separate from the
 # package's own pyproject.toml. scjn itself is installed normally by
-# .readthedocs.yaml and test.yml, pulling in its own real dependencies
+# website.yml and test.yml, pulling in its own real dependencies
 # (requests, platformdirs), so nothing but Sphinx and its theme belongs here.
 sphinx>=7
 furo

@@ -51,9 +51,9 @@ jobs:
   # Sphinx gate: a strict HTML build (any broken cross-reference or other
   # warning fails it) plus the documentation's worked examples run for real
   # against the cached releases (disk-first reads: the two `scjn download`
-  # steps put the assets the page exercises on disk first). Read the Docs'
-  # own build stays HTML-only and never touches the network (LegalIA's issue
-  # #195, inherited with the page).
+  # steps put the assets the page exercises on disk first). This is the only
+  # place the examples run: website.yml builds the same page HTML-only and
+  # never touches the network (LegalIA's issue #195, inherited with the page).
   docs:
     runs-on: ubuntu-latest
     env:

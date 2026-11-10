@@ -126,15 +126,25 @@ never the package: `uv sync --group scripts` or `pip install dofjson nota2md`.
 
 ## Documentation
 
-`docs/source/index.rst` is the Read the Docs page, the **developer reference**: every name in
-`__all__`, every public method of an exported class and every CLI subcommand gets a verified
-example, a live doctest run by the `docs` job of `test.yml` against the cached `lfca` law and
-reglamento `104906`; an exception is written on the page itself, naming the pytest suite that
-verifies the behaviour instead (`scjn.api` is the documented one). Private helpers (leading
-underscore) get a full docstring and appear through `:private-members:` but need no example. The
-HTML build is strict (`-n -W`). Read the Docs builds HTML only and never touches the network. Today
-the page is also published as `scjn_api.html` of `legalia.readthedocs.io`, from the monorepo, until
-this repository has a Read the Docs project of its own.
+One GitHub Pages site, `https://legistlan.github.io/scjn/`, built and deployed by
+`.github/workflows/website.yml` (the official Pages artifact flow, Pages source "GitHub Actions",
+no `gh-pages` branch; pull requests only build, a push to `main` deploys). It has two halves with
+no overlapping page:
+
+- `docs/source/index.rst`, published under `/dev/`, is the **developer reference**: every name in
+  `__all__`, every public method of an exported class and every CLI subcommand gets a verified
+  example, a live doctest run by the `docs` job of `test.yml` against the cached `lfca` law and
+  reglamento `104906`; an exception is written on the page itself, naming the pytest suite that
+  verifies the behaviour instead (`scjn.api` is the documented one). Private helpers (leading
+  underscore) get a full docstring and appear through `:private-members:` but need no example. The
+  HTML build is strict (`-n -W`). The strict build and the doctest stay in `test.yml`'s `docs` job
+  as the pull request gate; `website.yml` builds HTML only and never touches the network.
+- `website/` is the Quarto **user site** at the root, in English, written from the README and these
+  notes: install, command line, Python, releases, outline, crawl. `execute.enabled: false` (every
+  example needs the cache or the network), no API reference; its code blocks are illustrative and
+  the developer reference holds the verified ones. `tests/test_docs.py` keeps
+  `website/pages/cli.qmd` naming every CLI option and every `scjn/*.py` module documented by
+  exactly one `automodule` (`scjn.text` is the one named exception, until it has a section).
 
 ## Commands
 
@@ -144,6 +154,7 @@ pytest tests scripts/tests --ignore=tests/test_api_red.py --ignore=tests/test_re
 pytest tests/test_api_red.py tests/test_release_red.py                   # network: the SCOW API, the release
 scjn download --slug lfca && scjn download --coleccion reglamentos --id 104906   # what the doctests read
 python -m sphinx -n -W --keep-going -b html docs/source docs/build/html   # the strict build
+quarto render website                                                     # the user site, into website/_site
 python -m sphinx -b doctest docs/source docs/build/doctest                # the examples, off the cache
 python scripts/check_package_versions.py                                  # one step ahead of PyPI
 ```

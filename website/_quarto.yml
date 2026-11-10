@@ -1,0 +1,47 @@
+project:
+  type: website
+  output-dir: _site
+
+lang: en
+
+execute:
+  enabled: false
+
+website:
+  title: "scjn"
+  site-url: https://legistlan.github.io/scjn/
+  repo-url: https://github.com/legistlan/scjn
+  navbar:
+    background: "#f9f8f4"
+    left:
+      - href: index.qmd
+        text: Home
+      - href: pages/install.qmd
+        text: Install
+      - href: pages/cli.qmd
+        text: Command line
+      - href: pages/python.qmd
+        text: Python
+      - href: pages/releases.qmd
+        text: Releases
+      - href: pages/outline.qmd
+        text: Outline
+      - href: pages/crawl.qmd
+        text: Crawl
+      - href: https://legistlan.github.io/scjn/dev/
+        text: Developer docs
+    right:
+      - icon: github
+        href: https://github.com/legistlan/scjn
+        aria-label: GitHub
+  page-footer:
+    center: >
+      scjn · [legistlan](https://github.com/legistlan) ·
+      Code under the Apache 2.0 license
+
+format:
+  html:
+    theme: [litera, style.scss]
+    toc: true
+    number-sections: false
+    link-external-newwindow: true

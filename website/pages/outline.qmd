@@ -1,0 +1,65 @@
+---
+title: "Outline"
+---
+
+The SCOW API serves a reform as ordered *blocks* (`orden`, `numero`,
+`referencia`, `contenido`, `tamanio`). The writer puts one marker line before
+each block that yields text:
+
+```text
+<!-- scjn:block orden=N numero=N kind=<kind> [type=] [num=] label="..." -->
+```
+
+## The kinds
+
+`kind` is one of `header`, `recitals`, `preamble`, `toc`, `transitorios`,
+`decree`, `container`, `article`, `provision`, `other`.
+
+## The guarantees
+
+- The marker is an HTML comment on purpose: no character of the text changes.
+  `strip_markers` returns the text byte for byte, and
+  `markdown_de_snapshot(..., outline=False)` is the text without markers.
+- Every block that yields text has exactly one marker.
+- A block that yields none (an editorial `N. DE E.` aside) leaves its `orden` as
+  a gap that the raw answer explains.
+- A marker is metadata, never embedded in the text.
+
+`md2akn` reads the markers; it imports nothing from `scjn`, and the two are tied
+by a generated vocabulary fixture rather than by an import.
+
+## Raw answers are kept
+
+Every reform's answer is stored gzipped under `scripts/scjn/raw-api/`, so the
+writer can change without a re-crawl (`scripts/rewrite_scjn_from_raw.py`).
+
+## The completeness guard
+
+An answer is complete when its `orden` values are exactly `1..max` and it
+carries at least `tamanio` rows. An incomplete answer is requested again and
+then refused with `ScjnApiIncompleteError`, so the reform counts as failed and no
+file is written. A verbatim repeated row is dropped, first kept; two *different*
+blocks sharing an `orden` both stay. An instrument is swapped in whole or not at
+all.
+
+## Tables
+
+A tab-bearing block is a table: a blank line ends a row, a bare newline is a
+wrapped line inside a cell, a run of tabs separates columns. One recovered row is
+one Markdown paragraph `| cell | cell |`, with no header separator, and an
+`Artículo N` lead on a tabbed line is never a row. The lead of an article is
+bolded whole (`**Artículo 1.1**:`).
+
+## Verifying it
+
+`scripts/verify_scjn_outline.py` checks the contract over the local corpora and
+their raw answers, read-only and with no network:
+
+- **writer drift**: the body rebuilt from the raw answer against the body on disk;
+- **marker completeness**: every raw block with text has exactly one marker;
+- **attribute round-trip**: each marker equals `marker_line(parse_marker(...))`;
+- **text invariance**: `strip_markers` of the rebuilt body is the `outline=False` text.
+
+It exits with 1 only on a round-trip or invariance violation.
+`scripts/measure_block_gaps.py` counts the snapshots whose `orden` markers have a
+gap and which of them are explained.

@@ -22,6 +22,11 @@ htmlcov/
 # Sphinx build output
 docs/build/
 
+# Quarto build output (website/ is the user site, see website.yml)
+website/_site/
+website/.quarto/
+**/*_files/
+
 # The crawl's local scratch: the four corpora, the kept raw SCOW answers
 # (scripts/scjn/raw-api/), the crawl ledgers and the packaged releases the
 # scripts write with --outdir scripts/scjn (the default). Never committed:

@@ -12,6 +12,11 @@ The SCJN is **not** an official source of legal text — the *Diario Oficial de 
 read through [`dofjson`](https://github.com/legistlan/dofjson), remains that; this package's crawl is a convenience corpus the
 SCJN's own consolidated view makes possible, never a replacement for it.
 
+## Documentation
+
+- **Using the package:** [legistlan.github.io/scjn](https://legistlan.github.io/scjn/)
+- **Extending the package:** [legistlan.github.io/scjn/dev](https://legistlan.github.io/scjn/dev/)
+
 The package depends on no other package of the Legistlan project, and nothing here imports back from
 `nota2md` or `dofjson` (`tests/test_boundary.py`). `scjn.api` is the transport, `scjn.markdown` and `scjn.outline`
 write a snapshot, `scjn.catalog`, `scjn.state` and `scjn.header` are the catalogue's algebra, the
@@ -206,6 +211,7 @@ unrelated. `scripts/tests` holds the two tests of the crawl scripts.
 | `test_cache.py` | the disk-first cache and `AssetNotCached` |
 | `test_catalog.py` | the catalogue algebra: slugs, `abrev`, the instrument key |
 | `test_discovery.py` | the discovery passes, with a stub API |
+| `test_docs.py` | every module has one `automodule`; the CLI page names every option |
 | `test_header.py` | the provenance header |
 | `test_markdown.py` | the plain-text-to-Markdown writer (`scjn.markdown`) |
 | `test_outline.py` | the outline markers the writer keeps |

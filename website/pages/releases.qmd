@@ -1,0 +1,46 @@
+---
+title: "Releases"
+---
+
+The data is never committed to the repository: the corpora live in four
+GitHub releases.
+
+| Release | Content | Keyed by |
+|---|---|---|
+| `scjn-leyes` | 315 federal laws, reform-dated snapshots | `abrev` (the slug) |
+| `scjn-reglamentos` | federal *reglamentos* | `id_ordenamiento` |
+| `scjn-lineamientos` | federal *lineamientos* | `id_ordenamiento` |
+| `scjn-tratados` | international treaties | `id_ordenamiento` |
+
+Each release carries an index plus one tarball per instrument. An instrument
+with no consolidated text is indexed with `snapshots: 0` and has no tarball;
+reading it raises `SinTextoEnSCJN`.
+
+## A release is a series
+
+A GitHub release holds at most 1,000 assets, so a release is a series of tags:
+a part keeps the bare tag (`scjn-tratados`) and a continuation adds `-<n>`
+(`scjn-tratados-2`, `-3`, ...). The reader asks GitHub for the bare tag and then
+probes `-1`, `-2`, ... until one answers 404.
+
+## Where the releases live
+
+The repository whose releases are read is `scjn.release.release_repository()`.
+Set the environment variable `SCJN_RELEASE_REPOSITORY` (`<owner>/<name>`) to
+point every lookup at another repository; it is read on every call, so one
+process can be pointed elsewhere without reloading anything. The `gh` commands
+that the packaging scripts print in `PUBLICAR.md` follow the same variable.
+
+## Nothing is published automatically
+
+No workflow publishes SCJN-derived data. The SCJN's search can return a
+completely wrong document for an instrument, so a human decides what is safe to
+publish. Every packaging script writes a `PUBLICAR.md` and uploads nothing; a
+regenerated release is replaced in place (same tag, `--clobber`). See
+[Crawl](crawl.qmd).
+
+## Reading a release
+
+[Command line](cli.qmd) puts a release on disk, and [Python](python.qmd) reads
+it. Every reader is disk-first: it reads the cache and raises `AssetNotCached`
+for anything not there.

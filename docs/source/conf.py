@@ -6,7 +6,7 @@
 # -- Path setup ---------------------------------------------------------
 #
 # scjn is installed editable by the builds that render these docs
-# (.readthedocs.yaml, test.yml) rather than reached via sys.path manipulation
+# (website.yml, test.yml) rather than reached via sys.path manipulation
 # here, so conf.py only needs to import the already-installed package to read
 # its __version__.
 

@@ -31,12 +31,14 @@ RAIZ = Path(__file__).resolve().parents[1]
 #: forbids.
 URL_PROHIBIDA = "legislacion.scjn.gob.mx/" + "Buscador"
 
-SUFIJOS = {".py", ".md", ".rst", ".yml", ".yaml", ".toml", ".json"}
+SUFIJOS = {".py", ".md", ".rst", ".qmd", ".yml", ".yaml", ".toml", ".json"}
 
 #: Directories never walked: version control, environments, the Sphinx build
-#: output and the gitignored crawl scratch (the four corpora, the raw SCOW
+#: output, Quarto's build output and the gitignored crawl scratch (the four corpora, the raw SCOW
 #: answers and the packaged releases under `scripts/scjn/`).
-DIRECTORIOS_EXCLUIDOS = (".git", ".venv", "output", "scripts/scjn", "docs/build")
+DIRECTORIOS_EXCLUIDOS = (
+    ".git", ".venv", "output", "scripts/scjn", "docs/build", "website/_site", "website/.quarto",
+)
 NOMBRES_EXCLUIDOS = ("__pycache__", "node_modules")
 
 

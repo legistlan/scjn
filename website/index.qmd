@@ -1,0 +1,79 @@
+---
+title: "scjn"
+subtitle: "Mexican federal legislation from the SCJN, as dated Markdown snapshots"
+toc: false
+number-sections: false
+---
+
+::: {.home-lead}
+**scjn** is the client for the Suprema Corte de Justicia de la Nación's SCOW
+JSON API (the backend of `legislacion.scjn.gob.mx/consulta`), the writer of
+the Markdown snapshots of an instrument's reforms, and the disk-first reader
+of the four SCJN releases: `scjn-leyes`, `scjn-reglamentos`,
+`scjn-lineamientos` and `scjn-tratados`. Each snapshot carries a
+`fuente: scjn` provenance header.
+:::
+
+::: {.callout-warning}
+## The SCJN is not an official source of legal text
+
+The *Diario Oficial de la Federación* (DOF) is, and it is read through
+[dofjson](https://legistlan.github.io/dofjson/). `fuente: scjn` in a
+provenance header means exactly that: the text is the SCJN's consolidated
+view, a convenience corpus and never a replacement for the gazette.
+:::
+
+::: {.fronts}
+::: {.front}
+### Four releases
+
+`scjn-leyes` (315 federal laws, reform-dated snapshots, keyed by `abrev`) and
+the id-keyed `scjn-reglamentos`, `scjn-lineamientos` and `scjn-tratados`
+(keyed by `id_ordenamiento`).
+:::
+::: {.front}
+### Disk-first readers
+
+Every reader reads the cache and raises `AssetNotCached` rather than
+downloading; only `scjn download` and the `download_*_assets` functions talk
+to the network.
+:::
+::: {.front}
+### An outline that changes no text
+
+One marker line per block that yields text; `strip_markers` returns the text
+byte for byte.
+:::
+:::
+
+## Quickstart
+
+```bash
+pip install scjn
+scjn download --slug lfca
+```
+
+```python
+from scjn import download_scjn_leyes_index, download_scjn_leyes_corpus, markdown_de_snapshot
+
+index = download_scjn_leyes_index()           # the release's index, off the cache
+corpus = download_scjn_leyes_corpus("lfca")   # one law's tarball contents, off the cache
+text = markdown_de_snapshot("lfca", "<snapshot file name>")  # one reform, as Markdown
+```
+
+See [Install](pages/install.qmd) for what the package needs,
+[Command line](pages/cli.qmd) and [Python](pages/python.qmd) for the two ways
+to read a release, [Releases](pages/releases.qmd) for how the four releases are
+laid out, [Outline](pages/outline.qmd) for the marker lines and the
+completeness guard, and [Crawl](pages/crawl.qmd) for the scripts that produce a
+release. Extending the package itself is documented separately, on the
+[developer docs](https://legistlan.github.io/scjn/dev/).
+
+## Colophon {.unnumbered}
+
+This site was built by the scjn maintainers together with Claude,
+Anthropic's coding assistant, through
+[Claude Code](https://claude.com/claude-code): the assistant helped set up
+the Quarto site and draft these pages from the README and the project notes,
+with the authors reviewing and validating every change before it was
+committed.

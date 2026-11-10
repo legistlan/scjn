@@ -7,6 +7,7 @@ every command-line option. They need the repository checkout.
 """
 
 import re
+import subprocess
 import unittest
 from pathlib import Path
 
@@ -92,6 +93,51 @@ class TestCliPageNamesEveryOption(unittest.TestCase):
         self.assertFalse(
             missing,
             "website/pages/cli.qmd does not name these: " + ", ".join(missing),
+        )
+
+
+class TestNoFormerOwnerNames(unittest.TestCase):
+    """No tracked file names the organization or the monorepo this package came from (issue #6).
+
+    Links, comments and prose point at legistlan (this repository, its releases
+    and its GitHub Pages site); provenance is said without naming ("the monorepo
+    this package was extracted from on 9 November 2026"). A `#N` issue reference
+    stays: it names nothing. The check is case-insensitive and also catches the
+    two bare words.
+    """
+
+    # Built from fragments so this file does not flag itself.
+    FORMER = (
+        "legal" + "ia",
+        "ingeo" + "tec",
+    )
+
+    def test_no_tracked_file_names_the_former_owner(self):
+        try:
+            listing = subprocess.run(
+                ["git", "ls-files", "-z"],
+                cwd=ROOT, capture_output=True, check=True,
+            ).stdout
+        except (OSError, subprocess.CalledProcessError):
+            self.skipTest("git is not available or ROOT is not a git checkout")
+
+        offenders = {}
+        for name in filter(None, listing.decode("utf-8").split("\0")):
+            path = ROOT / name
+            if not path.is_file():
+                continue
+            try:
+                lowered = path.read_text(encoding="utf-8").lower()
+            except (UnicodeDecodeError, OSError):
+                continue
+            found = [word for word in self.FORMER if word in lowered]
+            if found:
+                offenders[name] = found
+
+        self.assertFalse(
+            offenders,
+            "tracked files name the former organization or monorepo: "
+            + "; ".join(f"{n}: {', '.join(w)}" for n, w in sorted(offenders.items())),
         )
 
 

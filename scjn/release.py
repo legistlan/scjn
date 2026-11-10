@@ -39,18 +39,17 @@ from scjn.state import ARCHIVO_ESTADO
 #: User-Agent for the `scjn-leyes` release's own GitHub requests -- the only
 #: network this module does (the SCJN crawl itself lives in `scjn.api`, with
 #: its own headers).
-_HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; LegalIA-scjn/1.0)"}
+_HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; legistlan-scjn/1.0)"}
 
 #: Environment variables a GitHub token is read from, the first one set wins
 #: -- `GH_TOKEN` before `GITHUB_TOKEN`, the `gh` CLI's own precedence.
 _TOKEN_VARIABLES = ("GH_TOKEN", "GITHUB_TOKEN")
 
 #: The repository that owns the four releases, as ``<owner>/<name>``, when
-#: `RELEASE_REPOSITORY_VARIABLE` is not set. The releases were first published
-#: from the `INGEOTEC/LegalIA` monorepo and still live there; the variable
-#: lets a copy of them be verified against its new owner before this default
-#: moves (changing it is a release of this package).
-DEFAULT_RELEASE_REPOSITORY = "INGEOTEC/LegalIA"
+#: `RELEASE_REPOSITORY_VARIABLE` is not set: this repository. The variable
+#: points a reader at a mirror (another ``<owner>/<name>`` holding releases of
+#: the same shape); changing the default is a release of this package.
+DEFAULT_RELEASE_REPOSITORY = "legistlan/scjn"
 RELEASE_REPOSITORY_VARIABLE = "SCJN_RELEASE_REPOSITORY"
 
 
@@ -58,7 +57,7 @@ def release_repository() -> str:
     """The ``<owner>/<name>`` repository the release lookups ask GitHub about:
     `RELEASE_REPOSITORY_VARIABLE` from the environment when it is set to
     something other than whitespace, else `DEFAULT_RELEASE_REPOSITORY`. Read
-    on every call, so a test or a verification run can point one process at
+    on every call, so a test or a run against a mirror can point one process at
     another owner without reloading the module."""
     return os.environ.get(RELEASE_REPOSITORY_VARIABLE, "").strip() or DEFAULT_RELEASE_REPOSITORY
 

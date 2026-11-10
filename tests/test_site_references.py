@@ -7,7 +7,7 @@ The SCJN's current legislation site is `legislacion.scjn.gob.mx/consulta`
 of the same host was retired in issue #179. A link left pointing at the old
 site is a live link to a dead page, so this test fails on any occurrence of
 that URL anywhere in the tree. The two frozen history documents that named
-it stayed in the `INGEOTEC/LegalIA` monorepo (with `nota2md`), so this
+it stayed in the monorepo this package was extracted from (with `nota2md`), so this
 repository has no exempt file.
 
 Historical *narrative* that says the old path was replaced does not name the

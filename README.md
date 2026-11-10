@@ -81,6 +81,13 @@ generated data, never by an import.
 
 Rule numbers below are those of the day each entry was written; `md2akn`'s `RULES.md` (issue #304) maps every old number to the present layered list (W, S, B, U).
 
+- **Issue #6 (still 0.5.1):** the releases' default owner is `legistlan/scjn`
+  (`scjn.release.DEFAULT_RELEASE_REPOSITORY`; `SCJN_RELEASE_REPOSITORY` still points a reader at a
+  mirror) and the User-Agent product token of the three network paths is `legistlan-scjn`
+  (`legistlan-scjn-crawler` for the SCOW client); `[project.urls]` names Documentation, Source and
+  Issues. Nothing else changes for a caller: a cache filled from the former owner stays valid, since
+  assets are matched by name and the copies are byte-identical.
+
 - **Issue #303 (still 0.5.1):** `scjn.markdown` is the Markdown writer, moved out of
   `scjn.api` with every name re-exported from it (a pure move; the writer-drift classes of
   `scripts/verify_scjn_outline.py` are identical before and after), and
@@ -100,7 +107,7 @@ Rule numbers below are those of the day each entry was written; `md2akn`'s `RULE
   Latin suffixes up to `Novodecies`/`Novendecies`, a letter before `(SIC)` —
   where it used to bold only the digits and leave the rest outside. `md2akn`
   matches a block with the `**` stripped, so this was cosmetic for the parse
-  (the ablation of the LegalIA monorepo's `scripts/embeddings/README.md`, "Measured, repeated
+  (the ablation in `scripts/embeddings/README.md` of the monorepo this package was extracted from, "Measured, repeated
   numbers", gives the writer a share of 0 of the repeated numbers); it makes
   the Markdown itself say what the article number is. The grammar is a copy
   of `md2akn`'s, since `scjn` imports no other package of the project, and
@@ -174,11 +181,11 @@ Rule numbers below are those of the day each entry was written; `md2akn`'s `RULE
 
 ## The releases' owner
 
-The four releases were first published from the `INGEOTEC/LegalIA` monorepo and still live there:
-`scjn.release.DEFAULT_RELEASE_REPOSITORY` names that owner, and the environment variable
+The four releases live in this repository, [`legistlan/scjn`](https://github.com/legistlan/scjn/releases):
+`scjn.release.DEFAULT_RELEASE_REPOSITORY` names it, and the environment variable
 `SCJN_RELEASE_REPOSITORY` (`<owner>/<name>`, read on every call by `scjn.release.release_repository`)
-points every lookup at another one, which is how a copy of the releases is verified against its new
-home before the default moves. Changing the default is a release of this package.
+points every lookup at a mirror of the releases elsewhere. Changing the default is a release of this
+package.
 
 ## The crawl
 
@@ -239,11 +246,10 @@ pytest tests scripts/tests --ignore=tests/test_api_red.py --ignore=tests/test_re
 python scripts/check_package_versions.py   # the local version is one step ahead of PyPI
 ```
 
-`scjn` was one package of the [LegalIA](https://github.com/INGEOTEC/LegalIA) monorepo,
-`packages/scjn`, until 9 November 2026 (monorepo commit `f403872b1`); this repository carries that
+`scjn` was one package of a monorepo, `packages/scjn`, until 9 November 2026 (monorepo commit `f403872b1`); this repository carries that
 history, filtered to the package's own files, the crawl scripts and its documentation page, so
 `git log` and `git blame` reach back to the first commit. A `#N` in a commit message is an issue of
-the monorepo.
+that monorepo.
 
 ## License
 

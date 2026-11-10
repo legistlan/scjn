@@ -10,8 +10,8 @@
 .. py:module:: scjn
 
 Version |scjn_version|. ``scjn`` is one package of the Legistlan project
-(the ``legistlan`` organization on GitHub), extracted from the
-``INGEOTEC/LegalIA`` monorepo in November 2026 with its history; the
+(the ``legistlan`` organization on GitHub), extracted from a
+monorepo in November 2026 with its history; the
 documentation of its siblings is where each one has put it: ``dofjson`` at
 `legistlan.github.io/dofjson <https://legistlan.github.io/dofjson/>`_ and
 ``document2md`` at

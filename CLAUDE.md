@@ -16,7 +16,7 @@ Federación* is, and `fuente: scjn` in a provenance header means exactly that.
 It is one package of the Legistlan project (the `legistlan` organization): `nota2md` requires
 `scjn>=0.5.1` and re-exports its readers; `scjn` itself imports no sibling, and
 `tests/test_boundary.py` greps the package for `nota2md`/`dofjson` to keep it so. It was
-`packages/scjn` of the `INGEOTEC/LegalIA` monorepo until 9 November 2026 (monorepo commit
+`packages/scjn` of a monorepo until 9 November 2026 (monorepo commit
 `f403872b1`); this repository is that history filtered to the package, its crawl scripts and its
 documentation page, so `git log` and `git blame` reach the first commit. A `#N` in a commit
 message, a comment or a docstring is an issue of the monorepo, where those issues live.
@@ -92,12 +92,11 @@ writes into `md2akn`'s own repository (`tests/fixtures_units/marker_vocabulary.j
   `--batch`, `--dry-run`), uploads in retried batches, resumes by rerunning and exits non-zero unless
   names, sizes and digests match. It is how a move of owner is done; it publishes nothing new and names
   no source repository (a required argument). Downloads land in the gitignored `scripts/scjn/release-copy/`.
-- **The releases' owner.** The four releases still live in `INGEOTEC/LegalIA`, where they were
-  first published: `scjn.release.DEFAULT_RELEASE_REPOSITORY` names it, and the environment
-  variable `SCJN_RELEASE_REPOSITORY` (`<owner>/<name>`, read on every call by
-  `release_repository`) points every lookup, and the `gh` commands `PUBLICAR.md` prints, at
-  another owner, so a copy of the releases is verified against its new home before the default
-  moves. Changing the default is a release of `scjn`.
+- **The releases' owner.** This repository owns the four releases: `scjn.release.DEFAULT_RELEASE_REPOSITORY`
+  names it (`legistlan/scjn`), and the environment variable `SCJN_RELEASE_REPOSITORY`
+  (`<owner>/<name>`, read on every call by `release_repository`) points every lookup, and the `gh`
+  commands `PUBLICAR.md` prints, at a mirror of the releases elsewhere. Changing the default is a
+  release of `scjn`. `scripts/copy_scjn_releases.py` is how the releases were copied here.
 - **The cache.** `scjn.cache.CACHE_DIR` (`$SCJN_CACHE_DIR`; platformdirs, `~/.cache/scjn` on
   Linux) is this package's alone, never shared with `nota2md`'s or `legalvec`'s. The release
   listing is one request to `api.github.com`, sent with `GH_TOKEN` or `GITHUB_TOKEN` when set
@@ -150,6 +149,11 @@ no overlapping page:
   the developer reference holds the verified ones. `tests/test_docs.py` keeps
   `website/pages/cli.qmd` naming every CLI option and every `scjn/*.py` module documented by
   exactly one `automodule` (`scjn.text` is the one named exception, until it has a section).
+
+Nothing in the tree names the former organization or the monorepo this package was extracted from:
+provenance is said without naming ("the monorepo this package was extracted from"), links point at
+`legistlan`, and `tests/test_docs.py` (`TestNoFormerOwnerNames`) fails on either name, in any letter
+case, in any tracked file. A `#N` issue reference stays: it names nothing.
 
 ## Commands
 

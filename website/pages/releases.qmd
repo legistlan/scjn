@@ -25,10 +25,12 @@ probes `-1`, `-2`, ... until one answers 404.
 
 ## Where the releases live
 
-The repository whose releases are read is `scjn.release.release_repository()`.
+The four releases live in this repository,
+[`legistlan/scjn`](https://github.com/legistlan/scjn/releases), and that is the
+repository `scjn.release.release_repository()` names by default.
 Set the environment variable `SCJN_RELEASE_REPOSITORY` (`<owner>/<name>`) to
-point every lookup at another repository; it is read on every call, so one
-process can be pointed elsewhere without reloading anything. The `gh` commands
+point every lookup at a mirror of the releases elsewhere; it is read on every
+call, so one process can be pointed elsewhere without reloading anything. The `gh` commands
 that the packaging scripts print in `PUBLICAR.md` follow the same variable.
 
 ## Nothing is published automatically

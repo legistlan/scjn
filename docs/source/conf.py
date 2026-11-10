@@ -20,7 +20,7 @@ author = "legistlan"
 
 # The repository is the package, so there is a single version here -- kept as
 # the same |scjn_version| substitution the page used while it was one page
-# of the LegalIA monorepo's site.
+# of the site of the monorepo this package was extracted from.
 rst_epilog = f"""
 .. |scjn_version| replace:: {scjn.__version__}
 """

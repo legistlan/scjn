@@ -20,25 +20,25 @@ should ever call it and then publish on its own.
     less scripts/scjn/leyes-release/MANIFEST.md   # read it. all of it.
 
     # `--repo` is the releases' owner, `scjn.release.release_repository()`:
-    # INGEOTEC/LegalIA until the releases move to this repository.
+    # this repository (legistlan/scjn) unless SCJN_RELEASE_REPOSITORY names a mirror.
     # first publish — the release itself, with the small text assets and the
     # reverse index (issue #117) every reader resolves a codNota against:
     cd scripts/scjn/leyes-release
     gh release create scjn-leyes MANIFEST.md SHA256SUMS.txt indice-global.json.gz \\
-        --repo INGEOTEC/LegalIA --title "SCJN — leyes" --notes-file MANIFEST.md
+        --repo legistlan/scjn --title "SCJN — leyes" --notes-file MANIFEST.md
 
     # then the ~315 per-law tarballs, in batches (gh takes many paths at
     # once, but a batch that fails mid-way is cheaper to retry than one run
     # of 315). `--clobber` makes re-running after a network failure
     # idempotent, so a batch can simply be repeated:
     ls *.tgz | xargs -n 20 gh release upload scjn-leyes \\
-        --repo INGEOTEC/LegalIA --clobber
+        --repo legistlan/scjn --clobber
 
     # a later run only has to re-upload the laws that changed -- but always
     # the reverse index with them: it is the union of every indice.json, so
     # any change to any law makes the published one stale.
     gh release upload scjn-leyes lft.tgz indice-global.json.gz \\
-        SHA256SUMS.txt MANIFEST.md --repo INGEOTEC/LegalIA --clobber
+        SHA256SUMS.txt MANIFEST.md --repo legistlan/scjn --clobber
 
 ## What goes in each tarball
 

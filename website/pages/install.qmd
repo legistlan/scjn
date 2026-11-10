@@ -1,0 +1,55 @@
+---
+title: "Install"
+---
+
+scjn needs Python 3.10 or newer.
+
+```bash
+pip install scjn
+```
+
+## What it depends on
+
+| Package | What it is for |
+|---|---|
+| `requests` | every request to the SCOW API and to GitHub |
+| `platformdirs` | picking the per-user cache directory |
+
+## The cache directory
+
+The release assets that `scjn download` and the `download_*_assets` functions
+write, and that every reader looks at first, live in `scjn.cache.CACHE_DIR`:
+an OS-appropriate per-user directory, `~/.cache/scjn` on Linux, overridable
+with the environment variable `SCJN_CACHE_DIR`. It is the package's own and is
+never shared with another package's cache.
+
+## GitHub rate limit
+
+Resolving a release's parts asks the GitHub API once, where an unauthenticated
+address gets 60 requests an hour. When `GH_TOKEN` (or `GITHUB_TOKEN`) is set,
+that request carries it as a bearer token; without one nothing changes. The
+asset downloads themselves are outside that quota.
+
+## Development install
+
+```bash
+pip install -e ".[test]"
+pytest tests scripts/tests --ignore=tests/test_api_red.py --ignore=tests/test_release_red.py
+```
+
+The two ignored files make real network calls (the live SCOW API and the real
+releases); CI runs them in their own `network` job.
+
+## The scripts' dependency group
+
+Three of the crawl scripts (`discover_federal_laws.py`,
+`fetch_scjn_legislacion.py` and `recrawl_scjn_outline.py`) link laws to the DOF
+and import `dofjson` and `nota2md` from PyPI, never the package itself:
+
+```bash
+uv sync --group scripts
+# or
+pip install dofjson nota2md
+```
+
+See [Crawl](crawl.qmd) for what each script does.

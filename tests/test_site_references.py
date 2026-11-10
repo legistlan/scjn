@@ -7,7 +7,7 @@ The SCJN's current legislation site is `legislacion.scjn.gob.mx/consulta`
 of the same host was retired in issue #179. A link left pointing at the old
 site is a live link to a dead page, so this test fails on any occurrence of
 that URL anywhere in the tree. The two frozen history documents that named
-it stayed in the `INGEOTEC/LegalIA` monorepo (with `nota2md`), so this
+it stayed in the monorepo this package was extracted from (with `nota2md`), so this
 repository has no exempt file.
 
 Historical *narrative* that says the old path was replaced does not name the
@@ -31,12 +31,14 @@ RAIZ = Path(__file__).resolve().parents[1]
 #: forbids.
 URL_PROHIBIDA = "legislacion.scjn.gob.mx/" + "Buscador"
 
-SUFIJOS = {".py", ".md", ".rst", ".yml", ".yaml", ".toml", ".json"}
+SUFIJOS = {".py", ".md", ".rst", ".qmd", ".yml", ".yaml", ".toml", ".json"}
 
 #: Directories never walked: version control, environments, the Sphinx build
-#: output and the gitignored crawl scratch (the four corpora, the raw SCOW
+#: output, Quarto's build output and the gitignored crawl scratch (the four corpora, the raw SCOW
 #: answers and the packaged releases under `scripts/scjn/`).
-DIRECTORIOS_EXCLUIDOS = (".git", ".venv", "output", "scripts/scjn", "docs/build")
+DIRECTORIOS_EXCLUIDOS = (
+    ".git", ".venv", "output", "scripts/scjn", "docs/build", "website/_site", "website/.quarto",
+)
 NOMBRES_EXCLUIDOS = ("__pycache__", "node_modules")
 
 

@@ -1,0 +1,74 @@
+---
+title: "Command line"
+---
+
+scjn has one verb, `download`: it puts a release on disk, in the package's
+cache directory, so that every reader in `scjn.release` then reads off it with
+no network request at all.
+
+```bash
+scjn download [--coleccion {leyes,reglamentos,lineamientos,tratados}]
+              [--slug SLUG | --id ID] [--cache-dir DIR] [--refrescar]
+```
+
+The index is always downloaded. Assets already cached are matched by name and
+never revalidated, so a second run costs no download at all.
+
+## `--coleccion`
+
+Which release to download: `leyes` (the default), `reglamentos`,
+`lineamientos` or `tratados`.
+
+```bash
+scjn download
+scjn download --coleccion tratados
+```
+
+## `--slug`
+
+Only this law's tarball, by slug. Repeatable, and valid with `--coleccion
+leyes` only. Not given: every law the release publishes.
+
+```bash
+scjn download --slug lfca --slug cpeum
+```
+
+## `--id`
+
+Only this instrument's tarball, by `id_ordenamiento`. Repeatable, and valid
+with `--coleccion reglamentos`, `lineamientos` or `tratados` only. Not given:
+every instrument the release publishes.
+
+```bash
+scjn download --coleccion reglamentos --id 104906
+```
+
+## `--cache-dir`
+
+The directory to write into. Not given: `scjn.cache.CACHE_DIR`, the
+OS-appropriate per-user cache, overridable with `$SCJN_CACHE_DIR`.
+
+```bash
+scjn download --slug lfca --cache-dir ./cache
+```
+
+## `--refrescar`
+
+Re-download assets already present instead of keeping them.
+
+```bash
+scjn download --slug lfca --refrescar
+```
+
+## What the developer docs' examples read
+
+The verified examples of the [developer docs](https://legistlan.github.io/scjn/dev/)
+run against two cached assets, put there by:
+
+```bash
+scjn download --slug lfca
+scjn download --coleccion reglamentos --id 104906
+```
+
+The last line of a run says what happened, for example
+`scjn-leyes: 1 assets in <cache dir> (1 downloaded, 0 already cached)`.

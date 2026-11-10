@@ -16,7 +16,7 @@ Federación* is, and `fuente: scjn` in a provenance header means exactly that.
 It is one package of the Legistlan project (the `legistlan` organization): `nota2md` requires
 `scjn>=0.5.1` and re-exports its readers; `scjn` itself imports no sibling, and
 `tests/test_boundary.py` greps the package for `nota2md`/`dofjson` to keep it so. It was
-`packages/scjn` of the `INGEOTEC/LegalIA` monorepo until 9 November 2026 (monorepo commit
+`packages/scjn` of a monorepo until 9 November 2026 (monorepo commit
 `f403872b1`); this repository is that history filtered to the package, its crawl scripts and its
 documentation page, so `git log` and `git blame` reach the first commit. A `#N` in a commit
 message, a comment or a docstring is an issue of the monorepo, where those issues live.
@@ -87,12 +87,16 @@ writes into `md2akn`'s own repository (`tests/fixtures_units/marker_vocabulary.j
   can return a completely wrong document for an instrument, so a human decides what is safe to
   publish). Every packaging script writes a `PUBLICAR.md` and uploads nothing; a regenerated
   release is replaced in place (same tag, `--clobber`).
-- **The releases' owner.** The four releases still live in `INGEOTEC/LegalIA`, where they were
-  first published: `scjn.release.DEFAULT_RELEASE_REPOSITORY` names it, and the environment
-  variable `SCJN_RELEASE_REPOSITORY` (`<owner>/<name>`, read on every call by
-  `release_repository`) points every lookup, and the `gh` commands `PUBLICAR.md` prints, at
-  another owner, so a copy of the releases is verified against its new home before the default
-  moves. Changing the default is a release of `scjn`.
+- **Copying the releases.** `scripts/copy_scjn_releases.py <owner>/<name>` copies the four series from a
+  source repository to this one (title, body and every asset, byte for byte; `--destination`, `--tag`,
+  `--batch`, `--dry-run`), uploads in retried batches, resumes by rerunning and exits non-zero unless
+  names, sizes and digests match. It is how a move of owner is done; it publishes nothing new and names
+  no source repository (a required argument). Downloads land in the gitignored `scripts/scjn/release-copy/`.
+- **The releases' owner.** This repository owns the four releases: `scjn.release.DEFAULT_RELEASE_REPOSITORY`
+  names it (`legistlan/scjn`), and the environment variable `SCJN_RELEASE_REPOSITORY`
+  (`<owner>/<name>`, read on every call by `release_repository`) points every lookup, and the `gh`
+  commands `PUBLICAR.md` prints, at a mirror of the releases elsewhere. Changing the default is a
+  release of `scjn`. `scripts/copy_scjn_releases.py` is how the releases were copied here.
 - **The cache.** `scjn.cache.CACHE_DIR` (`$SCJN_CACHE_DIR`; platformdirs, `~/.cache/scjn` on
   Linux) is this package's alone, never shared with `nota2md`'s or `legalvec`'s. The release
   listing is one request to `api.github.com`, sent with `GH_TOKEN` or `GITHUB_TOKEN` when set
@@ -126,15 +130,30 @@ never the package: `uv sync --group scripts` or `pip install dofjson nota2md`.
 
 ## Documentation
 
-`docs/source/index.rst` is the Read the Docs page, the **developer reference**: every name in
-`__all__`, every public method of an exported class and every CLI subcommand gets a verified
-example, a live doctest run by the `docs` job of `test.yml` against the cached `lfca` law and
-reglamento `104906`; an exception is written on the page itself, naming the pytest suite that
-verifies the behaviour instead (`scjn.api` is the documented one). Private helpers (leading
-underscore) get a full docstring and appear through `:private-members:` but need no example. The
-HTML build is strict (`-n -W`). Read the Docs builds HTML only and never touches the network. Today
-the page is also published as `scjn_api.html` of `legalia.readthedocs.io`, from the monorepo, until
-this repository has a Read the Docs project of its own.
+One GitHub Pages site, `https://legistlan.github.io/scjn/`, built and deployed by
+`.github/workflows/website.yml` (the official Pages artifact flow, Pages source "GitHub Actions",
+no `gh-pages` branch; pull requests only build, a push to `main` deploys). It has two halves with
+no overlapping page:
+
+- `docs/source/index.rst`, published under `/dev/`, is the **developer reference**: every name in
+  `__all__`, every public method of an exported class and every CLI subcommand gets a verified
+  example, a live doctest run by the `docs` job of `test.yml` against the cached `lfca` law and
+  reglamento `104906`; an exception is written on the page itself, naming the pytest suite that
+  verifies the behaviour instead (`scjn.api` is the documented one). Private helpers (leading
+  underscore) get a full docstring and appear through `:private-members:` but need no example. The
+  HTML build is strict (`-n -W`). The strict build and the doctest stay in `test.yml`'s `docs` job
+  as the pull request gate; `website.yml` builds HTML only and never touches the network.
+- `website/` is the Quarto **user site** at the root, in English, written from the README and these
+  notes: install, command line, Python, releases, outline, crawl. `execute.enabled: false` (every
+  example needs the cache or the network), no API reference; its code blocks are illustrative and
+  the developer reference holds the verified ones. `tests/test_docs.py` keeps
+  `website/pages/cli.qmd` naming every CLI option and every `scjn/*.py` module documented by
+  exactly one `automodule` (`scjn.text` is the one named exception, until it has a section).
+
+Nothing in the tree names the former organization or the monorepo this package was extracted from:
+provenance is said without naming ("the monorepo this package was extracted from"), links point at
+`legistlan`, and `tests/test_docs.py` (`TestNoFormerOwnerNames`) fails on either name, in any letter
+case, in any tracked file. A `#N` issue reference stays: it names nothing.
 
 ## Commands
 
@@ -144,6 +163,7 @@ pytest tests scripts/tests --ignore=tests/test_api_red.py --ignore=tests/test_re
 pytest tests/test_api_red.py tests/test_release_red.py                   # network: the SCOW API, the release
 scjn download --slug lfca && scjn download --coleccion reglamentos --id 104906   # what the doctests read
 python -m sphinx -n -W --keep-going -b html docs/source docs/build/html   # the strict build
+quarto render website                                                     # the user site, into website/_site
 python -m sphinx -b doctest docs/source docs/build/doctest                # the examples, off the cache
 python scripts/check_package_versions.py                                  # one step ahead of PyPI
 ```
@@ -156,6 +176,10 @@ python scripts/check_package_versions.py                                  # one 
   `__version__`, builds, checks and uploads with the organization's `TWINE` secret.
 - Publish order across repositories: `scjn` before the `nota2md` release that raises its floor. A
   published package never carries a URL dependency.
+- `[tool.uv] cache-keys` in `pyproject.toml` lists `scjn/__init__.py` (with `pyproject.toml` and
+  `setup.py`, which replacing uv's default list drops) so uv rebuilds the editable install when
+  `__version__` changes. Development-only: nothing in the wheel or a release changes;
+  `tests/test_packaging.py` pins it.
 
 ## Git workflow: branches, issues and PRs
 

@@ -1,0 +1,71 @@
+name: Publish website
+
+# One GitHub Pages site, two sources: the Quarto user site (website/) at the
+# root and the Sphinx developer site (docs/) under /dev/. Pull requests only
+# build both; pushes to main also deploy them.
+on:
+  pull_request:
+    paths:
+      - "website/**"
+      - "docs/**"
+      - "scjn/**"
+      - "pyproject.toml"
+      - ".github/workflows/website.yml"
+  push:
+    branches: [main]
+    paths:
+      - "website/**"
+      - "docs/**"
+      - "scjn/**"
+      - "pyproject.toml"
+      - ".github/workflows/website.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/configure-pages@v5
+
+      - uses: quarto-dev/quarto-actions/setup@v2
+        with:
+          version: 1.9.38
+
+      - run: quarto render website
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install docs and package dependencies
+        run: |
+          pip install -r docs/requirements.txt
+          # Not --no-deps: conf.py imports scjn, which imports requests and
+          # platformdirs, and autodoc imports them with it.
+          pip install -e .
+
+      - name: Build the developer docs strictly into the site
+        run: python -m sphinx -n -W --keep-going -b html docs/source website/_site/dev
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: website/_site
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: website
+      cancel-in-progress: true
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

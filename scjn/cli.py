@@ -39,7 +39,7 @@ _DESCARGAS_POR_ID = {
 }
 
 
-def _parser():
+def build_parser():
     parser = argparse.ArgumentParser(
         prog="scjn",
         description="Download an scjn-leyes/scjn-reglamentos/scjn-lineamientos/scjn-tratados release "
@@ -120,7 +120,7 @@ def main(argv=None):
     # point does `sys.exit(main())`, and a truthy non-int return value (a
     # list of results, say) would be printed and treated as a failing exit
     # code.
-    args = _parser().parse_args(argv)
+    args = build_parser().parse_args(argv)
     if args.comando == "download":
         _main_download(args)
 

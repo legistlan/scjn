@@ -6,7 +6,7 @@
 # -- Path setup ---------------------------------------------------------
 #
 # scjn is installed editable by the builds that render these docs
-# (.readthedocs.yaml, test.yml) rather than reached via sys.path manipulation
+# (website.yml, test.yml) rather than reached via sys.path manipulation
 # here, so conf.py only needs to import the already-installed package to read
 # its __version__.
 
@@ -20,7 +20,7 @@ author = "legistlan"
 
 # The repository is the package, so there is a single version here -- kept as
 # the same |scjn_version| substitution the page used while it was one page
-# of the LegalIA monorepo's site.
+# of the site of the monorepo this package was extracted from.
 rst_epilog = f"""
 .. |scjn_version| replace:: {scjn.__version__}
 """

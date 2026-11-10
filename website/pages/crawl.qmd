@@ -1,0 +1,35 @@
+---
+title: "Crawl"
+---
+
+`scripts/` holds the crawl, from candidates to a packaged release. Everything is
+written under `scripts/scjn/`, which is gitignored: data is never committed. A
+human runs the publish step.
+
+1. **Discover.** `discover_federal_laws.py`, `discover_federal_reglamentos.py`,
+   `discover_federal_lineamientos.py` and `discover_federal_tratados.py` list
+   candidates and stop: no state is written, because a new law is a human's
+   decision. `scjn.discovery` holds the shared paging and rescue rules.
+2. **Seed.** `seed_federal_reglamentos.py --coleccion {reglamentos,lineamientos,tratados}`
+   turns a reviewed list into `estado.json` files, idempotently.
+3. **Crawl.** `fetch_scjn_legislacion.py` crawls (`--coleccion`, `--plan`, and for
+   `leyes` only `--actualiza`/`--solo-fecha`/`--dof-only`/`--reintenta`);
+   `recrawl_scjn_outline.py` re-crawls a whole corpus with the markers on;
+   `rewrite_scjn_from_raw.py` rewrites Markdown from the kept raw answers without
+   the network.
+4. **Link.** Linking new `leyes` reforms to their `codNota` is `nota2md`'s
+   `scripts/enlaza_scjn_legislacion.py`, in that repository. The id-keyed
+   collections have no DOF linking.
+5. **Verify.** `verify_scjn_outline.py`, then `measure_block_gaps.py` (see
+   [Outline](outline.qmd)).
+6. **Package.** `empaqueta_scjn_leyes.py` and
+   `empaqueta_scjn_coleccion.py --coleccion ...` build the release: tarballs,
+   `indice-global.json.gz`, `SHA256SUMS.txt`, `MANIFEST.md`, `partes.json` and
+   `PUBLICAR.md`.
+7. **Publish.** A human reads `PUBLICAR.md` and publishes; only changed tarballs
+   need `--clobber`. No script uploads anything. See [Releases](releases.qmd).
+
+The three scripts that link laws to the DOF (`discover_federal_laws.py`,
+`fetch_scjn_legislacion.py`, `recrawl_scjn_outline.py`) import `dofjson` and
+`nota2md` from PyPI, never the package: `uv sync --group scripts` or
+`pip install dofjson nota2md` (see [Install](install.qmd)).

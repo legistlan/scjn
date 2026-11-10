@@ -5,7 +5,7 @@
 matches `pyproject.toml`. Nothing checks *before* that whether the local
 version is actually ahead of what PyPI has, or whether it jumped more than
 one release past it — so `__version__` can drift arbitrarily far from what
-is actually published (LegalIA's issue #194, inherited with the package).
+is actually published (issue #194 of the monorepo this package was extracted from).
 
 This reports PyPI's latest version, the local version
 (read from `pyproject.toml`'s dynamic `<pkg>.__version__` attribute without
@@ -94,7 +94,7 @@ def is_tombstone(package_dir: Path) -> bool:
     would otherwise report as "local is not ahead of PyPI" on every pull
     request from then on. The marker lives in the package it describes, so the
     next rename costs a key rather than an edit here. The rename that
-    motivated it, `dof2md` → `document2md` (LegalIA's issue #228), lives in
+    motivated it, `dof2md` → `document2md` (issue #228 of that monorepo), lives in
     that package's own repository, with its copy of this script."""
     pyproject = tomllib.load(open(package_dir / "pyproject.toml", "rb"))
     return bool(pyproject.get("tool", {}).get("scjn", {}).get("tombstone", False))

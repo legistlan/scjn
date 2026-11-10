@@ -27,7 +27,7 @@ from pathlib import Path
 import platformdirs
 import requests
 
-_HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; LegalIA-scjn/1.0)"}
+_HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; legistlan-scjn/1.0)"}
 
 #: Suffix of a download still in flight — an interrupted `.tgz` must never
 #: count as a cache hit: the bytes land here first and are renamed into place

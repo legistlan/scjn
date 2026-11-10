@@ -181,7 +181,7 @@ def instrumento_key(entrada: dict) -> str:
 #: `empaqueta_scjn_coleccion.py`, `fetch_scjn_legislacion.py`) moved to
 #: `instrumento_key` along with Fase 0's own generalisation -- this alias is
 #: kept only because it is public in `scjn.catalog` and doctested on this
-#: package's Read the Docs page, so it cannot be removed without breaking a
+#: package's developer reference page, so it cannot be removed without breaking a
 #: caller outside this repo.
 reglamento_key = instrumento_key
 

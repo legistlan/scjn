@@ -1,0 +1,71 @@
+---
+title: "Python"
+---
+
+The code blocks on this page are illustrative and are not executed when the
+site is built: every example needs the cache or the network. The verified
+examples, run as doctests, are on the
+[developer docs](https://legistlan.github.io/scjn/dev/).
+
+Every reader reads only the cache and raises `AssetNotCached` rather than
+downloading; only `download_*_assets` and `scjn download` (see
+[Command line](cli.qmd)) talk to the network.
+
+## `scjn-leyes`
+
+```python
+import scjn
+
+scjn.download_scjn_leyes_assets(["lfca"])        # network: put the assets on disk
+scjn.local_slugs()                               # the slugs already on disk
+
+scjn.download_scjn_leyes_index()                 # the release's index
+scjn.download_scjn_leyes_corpus("lfca")          # one law's corpus
+scjn.download_scjn_leyes_catalog()               # the catalogue of laws
+
+scjn.markdown_de_snapshot("lfca", "<snapshot file name>")
+scjn.markdown_de_snapshot("lfca", "<snapshot file name>", outline=False)
+
+for law in scjn.iter_current_federal_laws(["lfca"]):
+    ...                                          # the current text of each law
+```
+
+- `download_scjn_leyes_index`, `download_scjn_leyes_corpus` and
+  `download_scjn_leyes_catalog` read the cached index, one law's tarball and the
+  catalogue (which includes the SCJN's own `materia`, `vigencia` and `resumen`).
+- `markdown_de_snapshot` returns one reform's Markdown, with the
+  [outline markers](outline.qmd) by default; `outline=False` returns the
+  same text without them, byte for byte.
+- `iter_current_federal_laws` yields the current text of each law, one tarball
+  open at a time.
+- `AssetNotCached` is raised for whatever is not on disk yet.
+
+## The id-keyed releases
+
+`scjn-reglamentos`, `scjn-lineamientos` and `scjn-tratados` have the same
+functions with `reglamentos`, `lineamientos` or `tratados` in the name, keyed by
+`id_ordenamiento` rather than by slug:
+
+```python
+scjn.download_scjn_reglamentos_assets(["104906"])
+scjn.local_reglamentos_ids()
+scjn.download_scjn_reglamentos_index()
+scjn.download_scjn_reglamentos_corpus("104906")
+
+for reglamento in scjn.iter_current_reglamentos():
+    ...
+```
+
+`download_scjn_lineamientos_*`, `download_scjn_tratados_*`,
+`local_lineamientos_ids`, `local_tratados_ids`, `iter_current_lineamientos` and
+`iter_current_tratados` follow the same pattern. An instrument with no
+consolidated text raises `SinTextoEnSCJN`.
+
+## What only `leyes` has
+
+Only `scjn-leyes` has an `abrev` (the release's slug and asset name, never
+re-derived), an `actualizado` (`actualizado_scjn`, `actualizado_dof`), an
+`indice.json` and DOF linking. "Reform N" of a law is the SCJN reform table's
+chronological order. Linking a reform to its DOF `codNota` happens one layer up,
+in `nota2md`: a `codNota` is a DOF concept, and `scjn` imports no sibling
+package.

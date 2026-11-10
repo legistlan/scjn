@@ -10,11 +10,17 @@
 .. py:module:: scjn
 
 Version |scjn_version|. ``scjn`` is one package of the Legistlan project
-(the ``legistlan`` organization on GitHub), extracted from the
-``INGEOTEC/LegalIA`` monorepo in November 2026 with its history; the
-references of its siblings (``dofjson``, ``nota2md``, ``md2akn``,
-``legalvec``) are at `legalia.readthedocs.io <https://legalia.readthedocs.io/>`_
-until each has a project of its own.
+(the ``legistlan`` organization on GitHub), extracted from a
+monorepo in November 2026 with its history; the
+documentation of its siblings is where each one has put it: ``dofjson`` at
+`legistlan.github.io/dofjson <https://legistlan.github.io/dofjson/>`_ and
+``document2md`` at
+`legistlan.github.io/document2md <https://legistlan.github.io/document2md/>`_.
+
+.. note::
+
+   This page is the developer reference. Using the package is documented on
+   the user site, `legistlan.github.io/scjn <https://legistlan.github.io/scjn/>`_.
 
 :py:mod:`scjn` is the client for the Suprema Corte de Justicia de la
 Nación's SCOW JSON API (:py:mod:`scjn.api`, the backend of
@@ -459,7 +465,7 @@ instantiates :py:class:`~scjn.api.ScjnApi` directly, only the
 ``nota2md``'s ``scripts/fetch_federal_law_metadata.py``) does. This behaviour is instead
 verified for real, against the live service, by
 ``tests/test_api_red.py`` — not silently skipped, exactly the
-mechanism `document2md <https://document2md.readthedocs.io/>`_'s OCR paths
+mechanism `document2md <https://legistlan.github.io/document2md/>`__'s OCR paths
 already use for ``mineru``.
 
 The Markdown writer below it (:py:func:`~scjn.markdown.articulos_a_markdown` and

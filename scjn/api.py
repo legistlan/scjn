@@ -57,7 +57,7 @@ BASE_URL = "https://legislacion.scjn.gob.mx/SCOW-API"
 # template bug on their side); the endpoints answer without it and it is
 # deliberately not copied here (issue #172).
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (compatible; LegalIA-scjn-crawler/1.0)",
+    "User-Agent": "Mozilla/5.0 (compatible; legistlan-scjn-crawler/1.0)",
     "Content-Type": "application/json",
 }
 

@@ -510,8 +510,8 @@ def genera_publicar(coleccion: str, partes: list[dict], repo: str | None = None,
     those tarballs changed on disk, so only their part needs a fresh
     ``gh release upload --clobber``, never a fresh ``release create``.
     """
-    # The releases' owner, unless a caller names one: INGEOTEC/LegalIA until
-    # they move to this repository (`SCJN_RELEASE_REPOSITORY` overrides it).
+    # The releases' owner, unless a caller names one: this repository, unless
+    # `SCJN_RELEASE_REPOSITORY` names a mirror (`release_repository()`).
     repo = repo or release_repository()
     lineas = ["# Publicar — comandos generados, correr a mano (issue #115, Hallazgo C)", ""]
 

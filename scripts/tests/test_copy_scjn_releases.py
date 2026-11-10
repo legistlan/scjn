@@ -10,6 +10,7 @@ import io
 import json
 import subprocess
 import sys
+import urllib.parse
 from pathlib import Path
 from unittest import mock
 
@@ -37,6 +38,7 @@ class FakeGh:
         self.repos = {SRC: {}, DST: {}}
         self.calls = []
         self.next_id = 100
+        self.curl_fails = False
         self.upload_failures = 0  # how many `gh release upload` calls fail before one succeeds
 
     def release(self, repo, tag, title="T", body="B", assets=None):
@@ -48,17 +50,24 @@ class FakeGh:
         return next(r for r in self.repos[repo].values() if r["id"] == int(rid))
 
     def run(self, cmd, **kwargs):
-        assert cmd[0] == "gh" and kwargs.get("check") and "shell" not in kwargs
+        assert cmd[0] in ("gh", "curl") and kwargs.get("check") and "shell" not in kwargs
         self.calls.append(cmd)
         args = cmd[1:]
+        if cmd[0] == "curl":  # curl -fsSL --retry 3 -o <path> https://github.com/<repo>/releases/download/<tag>/<name>
+            _, _, _, repo1, repo2, _, _, tag, name = cmd[-1].split("/")
+            name = urllib.parse.unquote(name)
+            if self.curl_fails:
+                raise _failure("curl: (22) 404")
+            size = self.repos[f"{repo1}/{repo2}"][tag]["assets"][name][0]
+            Path(cmd[cmd.index("-o") + 1]).write_bytes(b"x" * size)
+            return _done()
         if args[0] == "api":
             return self._api(args[1:])
         if args[:2] == ["release", "download"]:
             tag, repo, outdir = args[2], args[args.index("-R") + 1], Path(args[args.index("-D") + 1])
-            outdir.mkdir(parents=True, exist_ok=True)
-            for name, (size, _) in self.repos[repo][tag]["assets"].items():
-                if not (outdir / name).exists():
-                    (outdir / name).write_bytes(b"x" * size)
+            wanted = args[args.index("-p") + 1]
+            size = self.repos[repo][tag]["assets"][wanted][0]
+            (outdir / wanted).write_bytes(b"x" * size)
             return _done()
         if args[:2] == ["release", "create"]:
             tag, repo = args[2], args[args.index("-R") + 1]
@@ -198,7 +207,7 @@ class TestMain:
         code, out, _ = _main(gh, "--dry-run")
         assert code == 0
         assert _writes(gh) == []
-        assert not any(cmd[1:3] == ["release", "download"] for cmd in gh.calls)
+        assert not any(cmd[0] == "curl" or cmd[1:3] == ["release", "download"] for cmd in gh.calls)
         assert not (gh.tmp / "out").exists()
         assert gh.repos[DST] == {}
         assert "would create the release" in out and "unrelated-release" not in out
@@ -227,7 +236,7 @@ class TestMain:
         code, out, _ = _main(gh)
         assert code == 0
         assert [w for w in _writes(gh) if w != ["release", "edit"]] == []  # only the --latest edit
-        assert not any(cmd[1:3] == ["release", "download"] for cmd in gh.calls)
+        assert not any(cmd[0] == "curl" or cmd[1:3] == ["release", "download"] for cmd in gh.calls)
         assert out.splitlines()[-1] == "copy verified: 3 releases, 5 assets"
 
     def test_two_missing_assets_are_the_only_ones_uploaded(self, gh):
@@ -304,14 +313,30 @@ class TestUploadRetries:
 
 
 class TestDownload:
-    def test_a_wrong_size_stops_the_run(self, gh, monkeypatch):
+    def test_fetches_only_what_is_not_there_through_the_public_url(self, gh):
+        gh.release(SRC, "t", assets={"a.tgz": (3, None), "b c.tgz": (2, None)})
         outdir = gh.tmp / "d"
-        monkeypatch.setattr(subprocess, "run", lambda cmd, **k: _done())  # downloads nothing
+        outdir.mkdir()
+        (outdir / "a.tgz").write_bytes(b"abc")  # already whole
+        with contextlib.redirect_stdout(io.StringIO()):
+            assert c.download(SRC, "t", outdir, {"a.tgz": (3, None), "b c.tgz": (2, None)}) == 2
+        curls = [cmd for cmd in gh.calls if cmd[0] == "curl"]
+        assert [cmd[-1] for cmd in curls] == [f"https://github.com/{SRC}/releases/download/t/b%20c.tgz"]
+        assert (outdir / "b c.tgz").stat().st_size == 2 and not list(outdir.glob("*.part"))
+
+    def test_a_truncated_file_is_fetched_again(self, gh):
+        gh.release(SRC, "t", assets={"a.tgz": (3, None)})
+        outdir = gh.tmp / "d"
         outdir.mkdir()
         (outdir / "a.tgz").write_bytes(b"xx")
-        with pytest.raises(SystemExit):
+        with contextlib.redirect_stdout(io.StringIO()):
             c.download(SRC, "t", outdir, {"a.tgz": (3, None)})
-        assert not (outdir / "a.tgz").exists()  # the truncated file was removed to be fetched again
+        assert (outdir / "a.tgz").stat().st_size == 3
+
+    def test_a_wrong_size_after_the_download_stops_the_run(self, gh):
+        gh.release(SRC, "t", assets={"a.tgz": (2, None)})  # the listing below claims 3
+        with contextlib.redirect_stdout(io.StringIO()), pytest.raises(SystemExit):
+            c.download(SRC, "t", gh.tmp / "d", {"a.tgz": (3, None)})
 
     def test_a_complete_folder_downloads_nothing(self, gh):
         outdir = gh.tmp / "d"
@@ -320,19 +345,29 @@ class TestDownload:
         assert c.download(SRC, "t", outdir, {"a.tgz": (3, None)}) == 1
         assert gh.calls == []
 
-    def test_a_rate_limited_download_is_retried(self, gh, monkeypatch):
+    def test_a_failed_curl_falls_back_to_gh_with_retries(self, gh):
+        gh.release(SRC, "t", assets={"a.tgz": (3, None)})
+        gh.curl_fails = True
+        outdir = gh.tmp / "d"
+        with contextlib.redirect_stdout(io.StringIO()):
+            c.download(SRC, "t", outdir, {"a.tgz": (3, None)})
+        assert [cmd[1:3] for cmd in gh.calls if cmd[0] == "gh"] == [["release", "download"]]
+        assert not list(outdir.glob("*.part"))
+
+    def test_a_rate_limited_gh_download_is_retried(self, gh, monkeypatch):
         outdir = gh.tmp / "d"
         calls = []
 
         def flaky(cmd, **kwargs):
             calls.append(cmd)
-            if len(calls) == 1:
+            if cmd[0] == "curl" or len(calls) == 2:
                 raise _failure("HTTP 403: API rate limit exceeded")
             outdir.mkdir(exist_ok=True)
             (outdir / "a.tgz").write_bytes(b"abc")
             return _done()
 
         monkeypatch.setattr(subprocess, "run", flaky)
-        with contextlib.redirect_stderr(io.StringIO()), mock.patch.object(c.time, "sleep") as sleep:
+        with contextlib.redirect_stderr(io.StringIO()), contextlib.redirect_stdout(io.StringIO()), \
+                mock.patch.object(c.time, "sleep") as sleep:
             assert c.download(SRC, "t", outdir, {"a.tgz": (3, None)}) == 1
-        assert len(calls) == 2 and sleep.call_args_list == [mock.call(60)]
+        assert len(calls) == 3 and sleep.call_args_list == [mock.call(60)]

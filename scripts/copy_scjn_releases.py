@@ -30,6 +30,7 @@ import json
 import subprocess
 import sys
 import time
+import urllib.parse
 from pathlib import Path
 
 BASES = ("scjn-leyes", "scjn-reglamentos", "scjn-lineamientos", "scjn-tratados")
@@ -134,28 +135,43 @@ def _same_text(a: str, b: str) -> bool:
     return a.replace("\r\n", "\n").strip() == b.replace("\r\n", "\n").strip()
 
 
+def fetch_asset(source: str, tag: str, name: str, outdir: Path) -> None:
+    """Download one asset of `source`'s `tag` into `outdir`, through a `.part` file.
+
+    First `curl` on the release's public download URL, which is not the REST API:
+    `gh release download` costs one API request per asset, and a 1,000-asset
+    release met the hourly rate limit mid-way (the asset endpoint answered
+    403 while `gh api rate_limit` still showed requests left). If curl fails
+    (a private source, say) the same file is fetched with `gh`, retried with a
+    growing pause like an upload. The final name only ever holds a whole download.
+    """
+    part = outdir / f"{name}.part"
+    url = f"https://github.com/{source}/releases/download/{tag}/{urllib.parse.quote(name)}"
+    try:
+        subprocess.run(["curl", "-fsSL", "--retry", "3", "-o", str(part), url],
+                       check=True, capture_output=True, text=True)
+    except subprocess.CalledProcessError:
+        part.unlink(missing_ok=True)
+        retrying(lambda: gh("release", "download", tag, "-R", source, "-p", name,
+                            "-D", str(outdir), "--clobber"), f"{tag}: download of {name}")
+    else:
+        part.replace(outdir / name)
+
+
 def download(source: str, tag: str, outdir: Path, expected: dict[str, tuple[int, str | None]]) -> int:
     """Download the assets of `source`'s `tag` not already in `outdir` and check every size.
 
     Returns the number of files in `outdir` after the call. A file with the wrong
-    size stops the run: the listing is the truth and a partial download is not.
+    size is fetched again (a truncated file from a dead run), and one that still
+    has the wrong size stops the run: the listing is the truth.
     """
     outdir.mkdir(parents=True, exist_ok=True)
-
-    def complete() -> bool:
-        return all((outdir / n).is_file() and (outdir / n).stat().st_size == s
-                   for n, (s, _) in expected.items())
-
-    if not complete():
-        for name, (size, _) in expected.items():  # a truncated file from a dead run: fetch it again
-            path = outdir / name
-            if path.is_file() and path.stat().st_size != size:
-                path.unlink()
-        # `gh release download` costs one API request per asset: a long series can meet
-        # the hourly API rate limit mid-way (seen on a 1,000-asset release), so it is
-        # retried like an upload; --skip-existing makes each attempt continue, not restart.
-        retrying(lambda: gh("release", "download", tag, "-R", source, "-D", str(outdir),
-                            "--skip-existing"), f"{tag}: download")
+    pending = [n for n, (size, _) in sorted(expected.items())
+               if not (outdir / n).is_file() or (outdir / n).stat().st_size != size]
+    for i, name in enumerate(pending, 1):
+        fetch_asset(source, tag, name, outdir)
+        if i % 100 == 0 or i == len(pending):
+            print(f"{tag}: {i}/{len(pending)} downloaded", flush=True)
     for name, (size, _) in sorted(expected.items()):
         path = outdir / name
         if not path.is_file():
@@ -205,8 +221,8 @@ def copy_tag(source: str, destination: str, tag: str, outdir: Path, batch: int,
               "--title", src["title"], "--notes-file", str(notes), "--latest=false"]
     todo = sorted(set(missing) | set(different))
     if dry_run:
-        print(f"[dry-run] would download: gh release download {tag} -R {source} "
-              f"-D {folder} --skip-existing")
+        print(f"[dry-run] would download {len(todo)} assets of {source}'s {tag} into {folder} "
+              f"(curl on the public URL of each, gh as the fallback)")
         if dst is None:
             print("[dry-run] would create the release:", " ".join(create))
         elif not (_same_text(src["title"], dst["title"]) and _same_text(src["body"], dst["body"])):

@@ -319,3 +319,20 @@ class TestDownload:
         (outdir / "a.tgz").write_bytes(b"abc")
         assert c.download(SRC, "t", outdir, {"a.tgz": (3, None)}) == 1
         assert gh.calls == []
+
+    def test_a_rate_limited_download_is_retried(self, gh, monkeypatch):
+        outdir = gh.tmp / "d"
+        calls = []
+
+        def flaky(cmd, **kwargs):
+            calls.append(cmd)
+            if len(calls) == 1:
+                raise _failure("HTTP 403: API rate limit exceeded")
+            outdir.mkdir(exist_ok=True)
+            (outdir / "a.tgz").write_bytes(b"abc")
+            return _done()
+
+        monkeypatch.setattr(subprocess, "run", flaky)
+        with contextlib.redirect_stderr(io.StringIO()), mock.patch.object(c.time, "sleep") as sleep:
+            assert c.download(SRC, "t", outdir, {"a.tgz": (3, None)}) == 1
+        assert len(calls) == 2 and sleep.call_args_list == [mock.call(60)]

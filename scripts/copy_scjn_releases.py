@@ -151,7 +151,11 @@ def download(source: str, tag: str, outdir: Path, expected: dict[str, tuple[int,
             path = outdir / name
             if path.is_file() and path.stat().st_size != size:
                 path.unlink()
-        gh("release", "download", tag, "-R", source, "-D", str(outdir), "--skip-existing")
+        # `gh release download` costs one API request per asset: a long series can meet
+        # the hourly API rate limit mid-way (seen on a 1,000-asset release), so it is
+        # retried like an upload; --skip-existing makes each attempt continue, not restart.
+        retrying(lambda: gh("release", "download", tag, "-R", source, "-D", str(outdir),
+                            "--skip-existing"), f"{tag}: download")
     for name, (size, _) in sorted(expected.items()):
         path = outdir / name
         if not path.is_file():
@@ -162,20 +166,26 @@ def download(source: str, tag: str, outdir: Path, expected: dict[str, tuple[int,
     return len(expected)
 
 
-def upload_batch(destination: str, tag: str, files: list[Path]) -> None:
-    """`gh release upload` one batch, retried with a growing pause; raise after the last attempt."""
+def retrying(action, label: str) -> None:
+    """Call `action()` up to UPLOAD_ATTEMPTS times, pausing RETRY_PAUSE * attempt between them."""
     for attempt in range(1, UPLOAD_ATTEMPTS + 1):
         try:
-            gh("release", "upload", tag, *map(str, files), "-R", destination, "--clobber")
+            action()
             return
         except subprocess.CalledProcessError as exc:
             if attempt == UPLOAD_ATTEMPTS:
                 raise
             pause = RETRY_PAUSE * attempt
             detail = (exc.stderr or "").strip().splitlines()[-1:] or ["no stderr"]
-            print(f"{tag}: batch failed (attempt {attempt}/{UPLOAD_ATTEMPTS}: {detail[0]}); "
+            print(f"{label} failed (attempt {attempt}/{UPLOAD_ATTEMPTS}: {detail[0][:200]}); "
                   f"retrying in {pause} s", file=sys.stderr, flush=True)
             time.sleep(pause)
+
+
+def upload_batch(destination: str, tag: str, files: list[Path]) -> None:
+    """`gh release upload` one batch, retried with a growing pause; raise after the last attempt."""
+    retrying(lambda: gh("release", "upload", tag, *map(str, files), "-R", destination, "--clobber"),
+             f"{tag}: batch")
 
 
 def copy_tag(source: str, destination: str, tag: str, outdir: Path, batch: int,

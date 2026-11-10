@@ -1,0 +1,4 @@
+{
+  "base_branch": "main",
+  "test_command": "pytest tests scripts/tests --ignore=tests/test_api_red.py --ignore=tests/test_release_red.py"
+}

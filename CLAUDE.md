@@ -87,6 +87,11 @@ writes into `md2akn`'s own repository (`tests/fixtures_units/marker_vocabulary.j
   can return a completely wrong document for an instrument, so a human decides what is safe to
   publish). Every packaging script writes a `PUBLICAR.md` and uploads nothing; a regenerated
   release is replaced in place (same tag, `--clobber`).
+- **Copying the releases.** `scripts/copy_scjn_releases.py <owner>/<name>` copies the four series from a
+  source repository to this one (title, body and every asset, byte for byte; `--destination`, `--tag`,
+  `--batch`, `--dry-run`), uploads in retried batches, resumes by rerunning and exits non-zero unless
+  names, sizes and digests match. It is how a move of owner is done; it publishes nothing new and names
+  no source repository (a required argument). Downloads land in the gitignored `scripts/scjn/release-copy/`.
 - **The releases' owner.** The four releases still live in `INGEOTEC/LegalIA`, where they were
   first published: `scjn.release.DEFAULT_RELEASE_REPOSITORY` names it, and the environment
   variable `SCJN_RELEASE_REPOSITORY` (`<owner>/<name>`, read on every call by

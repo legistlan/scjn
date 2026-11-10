@@ -192,6 +192,9 @@ them (`discover_federal_laws.py`, `fetch_scjn_legislacion.py`, `recrawl_scjn_out
 to the DOF and import `dofjson` and `nota2md` from PyPI, never the package: `uv sync --group scripts`
 or `pip install dofjson nota2md`.
 
+`scripts/copy_scjn_releases.py <owner>/<name>` copies the four release series from another repository to this one,
+byte for byte, and verifies them by name, size and digest (`--dry-run` first); it publishes nothing new.
+
 ## Tests
 
 ```bash
@@ -222,6 +225,7 @@ unrelated. `scripts/tests` holds the two tests of the crawl scripts.
 | `test_state.py` | crawl state and the row-comparison plan |
 | `test_text.py` | editorial-note removal and instrument grouping |
 | `scripts/tests/test_verify_scjn_outline.py` | the outline verifier on a toy corpus written with the real writer |
+| `scripts/tests/test_copy_scjn_releases.py` | the release copy against a fake `gh`: differences, series, batches, retries, dry run |
 | `scripts/tests/test_find_scjn_table_instruments.py` | the table-instrument finder against a stub API |
 
 Shared helpers live in `tests/conftest.py`, one definition each. After merging or deleting tests, compare line coverage per file by the *set* of covered lines

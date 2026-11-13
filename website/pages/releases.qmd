@@ -16,6 +16,18 @@ Each release carries an index plus one tarball per instrument. An instrument
 with no consolidated text is indexed with `snapshots: 0` and has no tarball;
 reading it raises `SinTextoEnSCJN`.
 
+## What an index carries
+
+Per instrument, the index records the SCJN's own `nombre`, the tarball (`asset`) and
+the number of `snapshots`, plus the SCJN's classification, one value per
+instrument rather than per reform: `materia`, `vigencia`, `resumen` and, since
+version 0.5.2, `categoria_ordenamiento` (`LEY`, `CODIGO`, `REGLAMENTO`, ...),
+`ambito` (`FEDERAL`, `ESTATAL`, `TRATADOS INTERNACIONALES`), `pais` (the field that
+tells the treaties apart) and, for a state-level instrument, `estado` and
+`municipio`. A field the SCJN gives no value for is absent from the index, and the
+readers return `None` for it; an index published before a field existed has no
+key for it. The classification is not in a snapshot's provenance header.
+
 ## A release is a series
 
 A GitHub release holds at most 1,000 assets, so a release is a series of tags:

@@ -58,7 +58,8 @@ from scjn.state import escribe_estado, lee_estado  # noqa: E402
 #: (issue #220: `materia`/`resumen` are half-populated by the SCJN itself,
 #: and this corpus records what it gives, inferring nothing).
 CAMPOS_SEMILLA = ("id_ordenamiento", "nombre", "categoria_ordenamiento", "ambito", "vigencia",
-                  "materia", "resumen")
+                  "materia", "resumen",
+                  "pais", "estado", "municipio")
 
 
 def seed(outdir: Path, candidatos: list[dict], *, coleccion: str = "reglamentos", log=print) -> list[str]:

@@ -771,6 +771,116 @@ if __name__ == "__main__":
     unittest.main()
 
 
+class TestClasificacionPorLey(ConCacheFixture):
+    """Issue #8: `categoria_ordenamiento`, `ambito`, `pais`, `estado` and
+    `municipio` (`CAMPOS_CLASIFICACION`) travel the same way as
+    `CAMPOS_METADATOS` -- into `instrumentos` and back out of every reader --
+    and an index published before they existed neither fails nor invents a
+    value."""
+
+    CLASIFICACION = {
+        "categoria_ordenamiento": "LEY", "ambito": "FEDERAL", "pais": "MEXICO",
+        "estado": "JALISCO", "municipio": "GUADALAJARA",
+    }
+
+    def test_la_tupla_es_la_documentada(self):
+        self.assertEqual(
+            release.CAMPOS_CLASIFICACION,
+            ("categoria_ordenamiento", "ambito", "pais", "estado", "municipio"),
+        )
+        self.assertEqual(release.CAMPOS_CLASIFICACION[0], release.CAMPO_CATEGORIA_ORDENAMIENTO)
+
+    def test_construye_indice_global_los_copia_a_instrumentos(self):
+        indice, _ = release.construye_indice_global(
+            [{"slug": "lft", "nombre": "LEY Federal del Trabajo", "indice": [],
+              **self.CLASIFICACION}],
+            generado="x",
+        )
+
+        self.assertEqual(
+            {c: indice["instrumentos"]["lft"][c] for c in release.CAMPOS_CLASIFICACION},
+            self.CLASIFICACION,
+        )
+
+    def test_construye_indice_global_omite_lo_que_no_tiene_valor(self):
+        indice, _ = release.construye_indice_global(
+            [{"slug": "lft", "nombre": "LFT", "indice": [],
+              "categoria_ordenamiento": "LEY", "ambito": "FEDERAL", "pais": None,
+              "estado": ""}],
+            generado="x",
+        )
+
+        entrada = indice["instrumentos"]["lft"]
+        self.assertEqual(entrada["categoria_ordenamiento"], "LEY")
+        self.assertEqual(entrada["ambito"], "FEDERAL")
+        for campo in ("pais", "estado", "municipio"):
+            self.assertNotIn(campo, entrada)
+
+    def test_indice_por_id_los_copia_y_omite_los_ausentes(self):
+        indice = release.construye_indice_global_tratados(
+            [{"id_ordenamiento": "1", "nombre": "T", "snapshots": 1, **self.CLASIFICACION},
+             {"id_ordenamiento": "2", "nombre": "U", "snapshots": 1, "pais": "FRANCIA"}],
+            generado="x",
+        )
+
+        completo, parcial = indice["instrumentos"]["1"], indice["instrumentos"]["2"]
+        self.assertEqual(
+            {c: completo[c] for c in release.CAMPOS_CLASIFICACION}, self.CLASIFICACION
+        )
+        self.assertEqual(parcial["pais"], "FRANCIA")
+        for campo in ("categoria_ordenamiento", "ambito", "estado", "municipio"):
+            self.assertNotIn(campo, parcial)
+
+    def test_el_catalogo_y_el_lector_devuelven_los_cinco_campos(self):
+        self._publica_indice({}, {"lft": {
+            "nombre": "LFT", "asset": "lft.tgz", "snapshots": 1, **self.CLASIFICACION,
+        }})
+        self._publica_tgz("lft", **{
+            "lft/indice.json": json.dumps(
+                [{"archivo": "a.md", "fecha_publicacion": "01-05-2019", "codNota": 1}]
+            ),
+            "lft/a.md": "LFT",
+        })
+
+        [entrada] = release.download_scjn_leyes_catalog(freshness=False, cache_dir=self.tmp)
+        [ley] = list(release.iter_current_federal_laws(cache_dir=self.tmp))
+
+        for campo, valor in self.CLASIFICACION.items():
+            self.assertEqual(entrada[campo], valor)
+            self.assertEqual(ley[campo], valor)
+
+    def test_un_indice_anterior_no_falla_ni_inventa(self):
+        # An index published before #8: no classification key anywhere.
+        self._publica_indice({}, {"lft": {"nombre": "LFT", "asset": "lft.tgz",
+                                          "snapshots": 1, "vigencia": "VIGENTE"}})
+        self._publica_tgz("lft", **{
+            "lft/indice.json": json.dumps(
+                [{"archivo": "a.md", "fecha_publicacion": "01-05-2019", "codNota": 1}]
+            ),
+            "lft/a.md": "LFT",
+        })
+
+        [entrada] = release.download_scjn_leyes_catalog(freshness=False, cache_dir=self.tmp)
+        [ley] = list(release.iter_current_federal_laws(cache_dir=self.tmp))
+
+        self.assertEqual(entrada, {"abrev": "lft", "nombre": "LFT", "vigencia": "VIGENTE"})
+        for campo in release.CAMPOS_CLASIFICACION:
+            self.assertIsNone(ley[campo])
+
+    def test_el_estado_json_del_tarball_aporta_la_clasificacion_al_catalogo(self):
+        self._publica_indice({}, {"lft": {"nombre": "LFT", "asset": "lft.tgz", "snapshots": 1}})
+        self._publica_tgz("lft", **{"lft/estado.json": json.dumps({
+            "actualizado": "2026-05-14", "ambito": "FEDERAL", "estado": "JALISCO",
+            "categoria_ordenamiento": "LEY"})})
+
+        [entrada] = release.download_scjn_leyes_catalog(cache_dir=self.tmp)
+
+        self.assertEqual(entrada["ambito"], "FEDERAL")
+        self.assertEqual(entrada["estado"], "JALISCO")
+        self.assertEqual(entrada["categoria_ordenamiento"], "LEY")
+        self.assertEqual(entrada["actualizado"], "2026-05-14")
+
+
 class TestMetadatosPorLey(ConCacheFixture):
     """Issue #215: `materia`/`vigencia`/`resumen` — one value per law, off
     the SCJN's own search — travel in `instrumentos` and come back out of
@@ -1501,7 +1611,7 @@ class TestIdKeyedWrappers(unittest.TestCase):
                 with self.subTest(funcion=funcion):
                     self.assertIn(funcion, scjn.__all__)
                     self.assertTrue(callable(getattr(scjn, funcion)))
-        self.assertEqual(scjn.__version__, "0.5.1")
+        self.assertEqual(scjn.__version__, "0.5.2")
 
 
 class TestIterCurrentPorId(ConCacheFixtureReglamentos):
@@ -1537,6 +1647,25 @@ class TestIterCurrentPorId(ConCacheFixtureReglamentos):
         self.assertEqual(reglamento["nombre"], "REGLAMENTO")
         self.assertEqual(reglamento["materia"], "ADMINISTRATIVO")
         self.assertEqual(reglamento["vigencia"], "VIGENTE")
+
+    def test_devuelve_la_clasificacion_o_none_en_un_indice_anterior(self):
+        self._publica_indice({
+            "1": {"nombre": "NUEVO", "asset": "1.tgz", "snapshots": 1,
+                  "categoria_ordenamiento": "ACUERDO (S)", "ambito": "FEDERAL",
+                  "pais": "MEXICO"},
+            "2": {"nombre": "VIEJO", "asset": "2.tgz", "snapshots": 1},
+        })
+        self._publica_tgz("1", **{"1/01-01-2000.md": "x"})
+        self._publica_tgz("2", **{"2/01-01-2000.md": "y"})
+
+        nuevo, viejo = list(release.iter_current_reglamentos(cache_dir=self.tmp))
+
+        self.assertEqual(nuevo["categoria_ordenamiento"], "ACUERDO (S)")
+        self.assertEqual(nuevo["ambito"], "FEDERAL")
+        self.assertEqual(nuevo["pais"], "MEXICO")
+        self.assertIsNone(nuevo["estado"])
+        for campo in release.CAMPOS_CLASIFICACION:
+            self.assertIsNone(viejo[campo])
 
     def test_nunca_trae_codnota_ni_abrev(self):
         # No hay enlace a DOF para estas colecciones (#220), asi que el

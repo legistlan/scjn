@@ -32,7 +32,7 @@ for law in scjn.iter_current_federal_laws(["lfca"]):
 
 - `download_scjn_leyes_index`, `download_scjn_leyes_corpus` and
   `download_scjn_leyes_catalog` read the cached index, one law's tarball and the
-  catalogue (which includes the SCJN's own `materia`, `vigencia` and `resumen`).
+  catalogue (which includes the SCJN's own `materia`, `vigencia`, `resumen` and, since 0.5.2, its classification: `categoria_ordenamiento`, `ambito`, `pais`, `estado`, `municipio`).
 - `markdown_de_snapshot` returns one reform's Markdown, with the
   [outline markers](outline.qmd) by default; `outline=False` returns the
   same text without them, byte for byte.

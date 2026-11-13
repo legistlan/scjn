@@ -92,7 +92,7 @@ from scjn.catalog import instrumento_key  # noqa: E402
 from scjn.header import versiones_de_directorio  # noqa: E402
 from scjn.release import (  # noqa: E402
     ASSET_INDICE_GLOBAL,
-    CAMPO_CATEGORIA_ORDENAMIENTO,
+    CAMPOS_CLASIFICACION,
     CAMPOS_METADATOS,
     LIMITE_ASSETS_POR_RELEASE,
     _tag_de_parte,
@@ -381,7 +381,7 @@ def escribe_indice_global(
                 "snapshots": r.total_snapshots,
                 **{
                     campo: (r.estado or {}).get(campo)
-                    for campo in (CAMPO_CATEGORIA_ORDENAMIENTO, *CAMPOS_METADATOS)
+                    for campo in (*CAMPOS_CLASIFICACION, *CAMPOS_METADATOS)
                 },
             }
             for r in resumenes

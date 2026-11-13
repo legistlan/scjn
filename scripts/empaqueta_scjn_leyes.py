@@ -141,6 +141,7 @@ sys.path.insert(0, str(_RAIZ))
 
 from scjn.release import (  # noqa: E402
     ASSET_INDICE_GLOBAL,
+    CAMPOS_CLASIFICACION,
     CAMPOS_METADATOS,
     AssetNotCached,
     construye_indice_global,
@@ -414,7 +415,7 @@ def escribe_indice_global(
                 **{
                     campo: (r.estado or {}).get(campo)
                     or publicados.get(r.slug, {}).get(campo)
-                    for campo in CAMPOS_METADATOS
+                    for campo in (*CAMPOS_CLASIFICACION, *CAMPOS_METADATOS)
                 },
             }
             for r in resumenes

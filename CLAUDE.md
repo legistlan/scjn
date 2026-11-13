@@ -41,6 +41,16 @@ message, a comment or a docstring is an issue of the monorepo, where those issue
   slug and asset name, never re-derived. "Reform N" of a law is the SCJN reform table's
   chronological order. `codNota` linking lives one layer up, in `nota2md`: a `codNota` is a DOF
   concept.
+- **The classification of an instrument** (one value per instrument, never in a snapshot's
+  provenance header): `scjn.release.CAMPOS_METADATOS` (`materia`, `vigencia`, `resumen`) and
+  `CAMPOS_CLASIFICACION` (`categoria_ordenamiento`, `ambito`, `pais`, `estado`, `municipio`).
+  They travel from the API hit (`scjn.api.Ordenamiento`) through `scjn.discovery` and the seed into
+  `estado.json`, from it into every collection's `indice-global.json.gz` (the index omits a field
+  with no value) and out of every reader (the keys are always returned, `None` where the index has
+  none; an index published before a field existed lacks it, which is not an error).
+  `scripts/backfill_scjn_classification.py` fills them into the `estado.json` of instruments already
+  crawled (match by `idOrdenamiento` only, resumable, never ranks); a human runs it, re-packages
+  and publishes the index asset.
 - **No source other than the SCJN**: the Cámara de Diputados (LeyesBiblio) is not a source.
 
 ## The outline contract
@@ -118,7 +128,9 @@ A human runs the publish step.
    Markdown from the kept raw answers without the network.
 4. Linking new `leyes` reforms to their `codNota` is `nota2md`'s `scripts/enlaza_scjn_legislacion.py`,
    in that repository; the id-keyed collections have no DOF linking.
-5. `scripts/verify_scjn_outline.py`, then `scripts/measure_block_gaps.py`.
+5. `scripts/backfill_scjn_classification.py --coleccion ...` (network; for instruments crawled
+   before their `estado.json` had the whole classification), `scripts/verify_scjn_outline.py`, then
+   `scripts/measure_block_gaps.py`.
 6. `scripts/empaqueta_scjn_leyes.py` / `scripts/empaqueta_scjn_coleccion.py --coleccion ...`
    package the release (tarballs, `indice-global.json.gz`, `SHA256SUMS.txt`, `MANIFEST.md`,
    `partes.json`, `PUBLICAR.md`).

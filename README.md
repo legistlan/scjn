@@ -38,6 +38,14 @@ them with no extra request — which makes `scjn-leyes` a *classified* corpus.
 search per law, matched by `idOrdenamiento` so a wrong document can never be
 described as the right one (issue #115, Hallazgo C).
 
+Since issue #8 every instrument, in all four collections, also carries the rest of the SCJN's
+classification: `categoria_ordenamiento` (`LEY`, `CODIGO`, `REGLAMENTO`, ...), `ambito` (`FEDERAL`,
+`ESTATAL`, `TRATADOS INTERNACIONALES`), `pais` (what tells the instruments of `scjn-tratados` apart)
+and, for a state-level instrument, `estado` and `municipio` (`scjn.release.CAMPOS_CLASIFICACION`).
+The index omits a field the SCJN gives no value for, and the readers return all five keys, `None`
+where the index has none (an index published before the change has none). They are filled into
+`estado.json` of the instruments already crawled by `scripts/backfill_scjn_classification.py`.
+
     scjn download [--coleccion {leyes,reglamentos,lineamientos,tratados}] [--slug SLUG | --id ID]
                   [--cache-dir DIR] [--refrescar]
 

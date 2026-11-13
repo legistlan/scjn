@@ -118,6 +118,17 @@ ASSET_INDICE_GLOBAL = "indice-global.json.gz"
 #: describes it at one reform in the past.
 CAMPOS_METADATOS = ("materia", "vigencia", "resumen")
 
+#: The rest of the SCJN's classification of an instrument, added in issue #8.
+#: `categoria_ordenamiento` says what kind of instrument it is (`LEY`,
+#: `CODIGO`, `REGLAMENTO`, ...), `ambito` its scope (`FEDERAL`, `ESTATAL`,
+#: `TRATADOS INTERNACIONALES`), `pais` its country (the one field that tells
+#: the instruments of `scjn-tratados` apart) and, for a state-level
+#: instrument, `estado` and `municipio`. Like `CAMPOS_METADATOS` they are one
+#: value per instrument, live in `estado.json` and in the index, never in a
+#: snapshot's provenance header, and an index published before they existed
+#: simply lacks them.
+CAMPOS_CLASIFICACION = ("categoria_ordenamiento", "ambito", "pais", "estado", "municipio")
+
 
 class AssetNotCached(Exception):
     """A release asset a reader needs is not on disk yet.
@@ -182,6 +193,10 @@ def construye_indice_global(instrumentos: list[dict], generado: str) -> tuple[di
     "the SCJN says nothing", and so the asset does not grow by 315 nulls
     while the fields are being backfilled.
 
+    The five `CAMPOS_CLASIFICACION` (`categoria_ordenamiento`, `ambito`,
+    `pais`, `estado`, `municipio`, issue #8) are copied the same way, with the
+    same absent-never-`null` rule.
+
     Only snapshots with a `codNota` actually linked make it in (D2): the index
     is the list of what we *know*, so an `ambiguous` or `unlinked` snapshot is
     counted in the returned tally and left out of the payload.
@@ -204,7 +219,7 @@ def construye_indice_global(instrumentos: list[dict], generado: str) -> tuple[di
             "asset": instrumento.get("asset") or f"{slug}.tgz",
             "snapshots": len(indice) or instrumento.get("snapshots", 0),
         }
-        for campo in CAMPOS_METADATOS:
+        for campo in (*CAMPOS_CLASIFICACION, *CAMPOS_METADATOS):
             valor = instrumento.get(campo)
             if valor:
                 entradas_instrumentos[slug][campo] = valor
@@ -606,7 +621,10 @@ def iter_current_federal_laws(
         yield {
             "slug": slug,
             "nombre": entrada_indice.get("nombre"),
-            **{campo: entrada_indice.get(campo) for campo in CAMPOS_METADATOS},
+            **{
+                campo: entrada_indice.get(campo)
+                for campo in (*CAMPOS_CLASIFICACION, *CAMPOS_METADATOS)
+            },
             "fecha_publicacion": fecha_publicacion,
             "codNota": cod_nota,
             "archivo": archivo,
@@ -681,7 +699,11 @@ def download_scjn_leyes_catalog(*, freshness: bool = True, cache_dir=None, log=N
         entrada_indice = indice["instrumentos"][slug]
         entrada = {"abrev": slug, "nombre": entrada_indice["nombre"]}
         entrada.update(
-            {c: entrada_indice[c] for c in CAMPOS_METADATOS if entrada_indice.get(c)}
+            {
+                c: entrada_indice[c]
+                for c in (*CAMPOS_CLASIFICACION, *CAMPOS_METADATOS)
+                if entrada_indice.get(c)
+            }
         )
         if freshness:
             try:
@@ -696,7 +718,11 @@ def download_scjn_leyes_catalog(*, freshness: bool = True, cache_dir=None, log=N
             if estado.get("actualizado"):
                 entrada["actualizado"] = estado["actualizado"]
             entrada.update(
-                {campo: estado[campo] for campo in CAMPOS_METADATOS if estado.get(campo)}
+                {
+                    campo: estado[campo]
+                    for campo in (*CAMPOS_CLASIFICACION, *CAMPOS_METADATOS)
+                    if estado.get(campo)
+                }
             )
         catalogo.append(entrada)
     return catalogo
@@ -797,13 +823,13 @@ def download_scjn_leyes_assets(
 # section, and a tarball ships no `indice.json`/`notas/` -- only
 # `<id_ordenamiento>/<fecha>.md` and `<id_ordenamiento>/estado.json`.
 
-#: Field an id-keyed collection's index carries that `scjn-leyes` never
-#: needs: the SCJN's own classification of the ordenamiento at seeding time
-#: (`categoriaOrdenamiento`) -- every law is already a ley/codigo/constitucion
-#: by construction, but a reglamento's or lineamiento's inclusion rule can
+#: The SCJN's own classification of the ordenamiento at seeding time
+#: (`categoriaOrdenamiento`), the first of `CAMPOS_CLASIFICACION`. Born in the
+#: id-keyed collections -- a reglamento's or lineamiento's inclusion rule can
 #: rescue an instrument the SCJN itself classifies as `ACUERDO (S)` or
-#: similar, so recording what it was actually classified as is worth
-#: keeping.
+#: similar, so recording what it was actually classified as is worth keeping --
+#: and, since issue #8, carried by `scjn-leyes` too (`LEY` or `CODIGO`).
+#: Kept as a name for the callers that import it.
 CAMPO_CATEGORIA_ORDENAMIENTO = "categoria_ordenamiento"
 
 
@@ -840,12 +866,13 @@ def _indice_global_por_id(coleccion: str, instrumentos: list[dict], generado: st
 
         {"generado", "coleccion": <coleccion>,
          "instrumentos": {id_ordenamiento: {"nombre", "asset"?, "snapshots",
-                                             "categoria_ordenamiento"?,
+                                             "categoria_ordenamiento"?, "ambito"?,
+                                             "pais"?, "estado"?, "municipio"?,
                                              "materia"?, "vigencia"?,
                                              "resumen"?}}}
 
     Each of `instrumentos` is ``{"id_ordenamiento", "nombre", "asset"?,
-    "snapshots"?, "categoria_ordenamiento"?, "materia"?, "vigencia"?,
+    "snapshots"?, <each of CAMPOS_CLASIFICACION>?, "materia"?, "vigencia"?,
     "resumen"?}``, keyed in the result by `id_ordenamiento`
     (`scjn.catalog.instrumento_key`) rather than by a title-derived slug —
     neither id-keyed collection has an `abrev`. `snapshots` is a plain count:
@@ -868,9 +895,7 @@ def _indice_global_por_id(coleccion: str, instrumentos: list[dict], generado: st
         if snapshots:
             entrada["asset"] = instrumento.get("asset") or f"{clave}.tgz"
         entrada["snapshots"] = snapshots
-        if instrumento.get(CAMPO_CATEGORIA_ORDENAMIENTO):
-            entrada[CAMPO_CATEGORIA_ORDENAMIENTO] = instrumento[CAMPO_CATEGORIA_ORDENAMIENTO]
-        for campo in CAMPOS_METADATOS:
+        for campo in (*CAMPOS_CLASIFICACION, *CAMPOS_METADATOS):
             valor = instrumento.get(campo)
             if valor:
                 entrada[campo] = valor
@@ -1344,7 +1369,7 @@ def _iter_current_de_release(
         yield {
             "id_ordenamiento": clave,
             "nombre": entrada.get("nombre"),
-            **{campo: entrada.get(campo) for campo in CAMPOS_METADATOS},
+            **{campo: entrada.get(campo) for campo in (*CAMPOS_CLASIFICACION, *CAMPOS_METADATOS)},
             "fecha_publicacion": archivo[:10],
             "archivo": archivo,
             "markdown": markdown,

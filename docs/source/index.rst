@@ -145,9 +145,40 @@ classified corpus — stratify by ``materia``, keep only ``VIGENTE`` — without
 a second pass or a request to the SCJN (issue #215):
 
 >>> sorted(laws[0])
-['archivo', 'codNota', 'fecha_publicacion', 'markdown', 'materia', 'nombre', 'resumen', 'slug', 'vigencia']
+['ambito', 'archivo', 'categoria_ordenamiento', 'codNota', 'estado', 'fecha_publicacion', 'markdown', 'materia', 'municipio', 'nombre', 'pais', 'resumen', 'slug', 'vigencia']
 >>> laws[0]["materia"]
 'ADMINISTRATIVO'
+
+Since issue #8 every instrument also carries the rest of the SCJN's
+classification, the five fields of :py:data:`~scjn.release.CAMPOS_CLASIFICACION`:
+``categoria_ordenamiento`` (``LEY``, ``CODIGO``, ``REGLAMENTO``, ...),
+``ambito`` (``FEDERAL``, ``ESTATAL``, ``TRATADOS INTERNACIONALES``), ``pais``
+(the field that tells the instruments of ``scjn-tratados`` apart) and, for a
+state-level instrument, ``estado`` and ``municipio``. The iterators always
+return the five keys, ``None`` where the index has no value — which is
+what an index published before they existed gives for every law, so this
+example does not depend on which release is cached:
+
+>>> from scjn.release import CAMPOS_CLASIFICACION, construye_indice_global
+>>> sorted(CAMPOS_CLASIFICACION)
+['ambito', 'categoria_ordenamiento', 'estado', 'municipio', 'pais']
+>>> all(campo in laws[0] for campo in CAMPOS_CLASIFICACION)
+True
+
+An index built with the fields has them on each entry, and an instrument
+lacking a value has no such key (absent, never ``null``):
+
+>>> indice, _ = construye_indice_global(
+...     [{"slug": "lfca", "nombre": "LEY Federal de Cine y el Audiovisual",
+...       "indice": [], "categoria_ordenamiento": "LEY", "ambito": "FEDERAL",
+...       "pais": "MÉXICO", "estado": None}],
+...     generado="2026-11-13T00:00:00+00:00",
+... )
+>>> entrada = indice["instrumentos"]["lfca"]
+>>> entrada["categoria_ordenamiento"], entrada["ambito"], entrada["pais"]
+('LEY', 'FEDERAL', 'MÉXICO')
+>>> "estado" in entrada, "municipio" in entrada
+(False, False)
 
 ``lfca`` is also the illustration of "absent, never a placeholder": the SCJN
 publishes no abstract for it, so ``resumen`` is ``None`` here and the key is
@@ -303,7 +334,7 @@ what comes back, because this collection has no DOF link (issue #220):
 
 >>> [reglamento] = list(scjn.iter_current_reglamentos(["104906"]))
 >>> sorted(reglamento)
-['archivo', 'fecha_publicacion', 'id_ordenamiento', 'markdown', 'materia', 'nombre', 'resumen', 'vigencia']
+['ambito', 'archivo', 'categoria_ordenamiento', 'estado', 'fecha_publicacion', 'id_ordenamiento', 'markdown', 'materia', 'municipio', 'nombre', 'pais', 'resumen', 'vigencia']
 >>> reglamento["archivo"]
 '25-01-2017.md'
 

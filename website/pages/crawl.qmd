@@ -22,12 +22,34 @@ human runs the publish step.
    collections have no DOF linking.
 5. **Verify.** `verify_scjn_outline.py`, then `measure_block_gaps.py` (see
    [Outline](outline.qmd)).
-6. **Package.** `empaqueta_scjn_leyes.py` and
+6. **Backfill the classification** (instruments crawled before the SCJN's whole
+   classification was recorded). `backfill_scjn_classification.py --coleccion
+   {leyes,reglamentos,lineamientos,tratados}` asks the SCJN's search once per
+   instrument and merges `categoria_ordenamiento`, `ambito`, `pais`, `estado`,
+   `municipio`, `materia`, `vigencia` and `resumen` into its `estado.json`. It
+   keeps only the hit whose `idOrdenamiento` equals the instrument's own, never
+   ranks, is resumable (an instrument that already has `ambito` is skipped unless
+   `--force`), warns about and skips a transport error and always exits 0;
+   `--dry-run` writes nothing. It talks to the network (about 2,900 instruments,
+   roughly 30 to 60 minutes), so a human runs it, after the crawl and before
+   packaging.
+7. **Package.** `empaqueta_scjn_leyes.py` and
    `empaqueta_scjn_coleccion.py --coleccion ...` build the release: tarballs,
    `indice-global.json.gz`, `SHA256SUMS.txt`, `MANIFEST.md`, `partes.json` and
    `PUBLICAR.md`.
-7. **Publish.** A human reads `PUBLICAR.md` and publishes; only changed tarballs
+8. **Publish.** A human reads `PUBLICAR.md` and publishes; only changed tarballs
    need `--clobber`. No script uploads anything. See [Releases](releases.qmd).
+
+The commands a human runs to bring the classification into a published release:
+
+```bash
+python scripts/backfill_scjn_classification.py --coleccion leyes
+python scripts/backfill_scjn_classification.py --coleccion reglamentos   # likewise lineamientos, tratados
+python scripts/empaqueta_scjn_leyes.py
+python scripts/empaqueta_scjn_coleccion.py --coleccion reglamentos
+# then publish what PUBLICAR.md says: only the index asset changed, so
+gh release upload scjn-leyes indice-global.json.gz --repo legistlan/scjn --clobber
+```
 
 The three scripts that link laws to the DOF (`discover_federal_laws.py`,
 `fetch_scjn_legislacion.py`, `recrawl_scjn_outline.py`) import `dofjson` and

@@ -220,9 +220,13 @@ def coverage_audit(
                     "idOrdenamiento": hit.idOrdenamiento,
                     "ordenamiento": hit.ordenamiento,
                     "categoriaOrdenamiento": hit.categoriaOrdenamiento,
+                    "ambito": hit.ambito,
                     "vigencia": hit.vigencia,
                     "materia": hit.materia,
                     "resumen": hit.resumen,
+                    "pais": hit.pais,
+                    "estado": hit.estado,
+                    "municipio": hit.municipio,
                 },
                 "reformas": reformas,
             }
@@ -284,7 +288,7 @@ def discover(
     """The whole discovery pipeline (issue #220's Fase 1, generalized in
     #222's Fase 0): every federal instrument of one id-keyed collection,
     each carrying its own `id_ordenamiento`, `nombre`, `categoria_ordenamiento`,
-    `ambito`, `vigencia`, `materia`, `resumen`, reform count and reform-with-text
+    `ambito`, `vigencia`, `materia`, `resumen`, `pais`, `estado`, `municipio`, reform count and reform-with-text
     count -- sorted by `nombre`, ready for a human to review before a
     seeding script turns it into `estado.json` files.
 
@@ -354,6 +358,9 @@ def discover(
             "vigencia": hit.vigencia,
             "materia": hit.materia,
             "resumen": hit.resumen,
+            "pais": hit.pais,
+            "estado": hit.estado,
+            "municipio": hit.municipio,
             "reformas": len(reformas),
             "reformas_con_texto": sum(1 for r in reformas if r.tieneArticulos),
         })

@@ -7,10 +7,11 @@ written under `scripts/scjn/`, which is gitignored: data is never committed. A
 human runs the publish step.
 
 1. **Discover.** `discover_federal_laws.py`, `discover_federal_reglamentos.py`,
-   `discover_federal_lineamientos.py` and `discover_federal_tratados.py` list
+   `discover_federal_lineamientos.py`, `discover_federal_tratados.py` and
+   `discover_federal_estatutos.py` list
    candidates and stop: no state is written, because a new law is a human's
    decision. `scjn.discovery` holds the shared paging and rescue rules.
-2. **Seed.** `seed_federal_reglamentos.py --coleccion {reglamentos,lineamientos,tratados}`
+2. **Seed.** `seed_federal_reglamentos.py --coleccion {reglamentos,lineamientos,tratados,estatutos}`
    turns a reviewed list into `estado.json` files, idempotently.
 3. **Crawl.** `fetch_scjn_legislacion.py` crawls (`--coleccion`, `--plan`, and for
    `leyes` only `--actualiza`/`--solo-fecha`/`--dof-only`/`--reintenta`);
@@ -24,7 +25,7 @@ human runs the publish step.
    [Outline](outline.qmd)).
 6. **Backfill the classification** (instruments crawled before the SCJN's whole
    classification was recorded). `backfill_scjn_classification.py --coleccion
-   {leyes,reglamentos,lineamientos,tratados}` asks the SCJN's search once per
+   {leyes,reglamentos,lineamientos,tratados,estatutos}` asks the SCJN's search once per
    instrument and merges `categoria_ordenamiento`, `ambito`, `pais`, `estado`,
    `municipio`, `materia`, `vigencia` and `resumen` into its `estado.json`. It
    keeps only the hit whose `idOrdenamiento` equals the instrument's own, never
@@ -44,12 +45,16 @@ The commands a human runs to bring the classification into a published release:
 
 ```bash
 python scripts/backfill_scjn_classification.py --coleccion leyes
-python scripts/backfill_scjn_classification.py --coleccion reglamentos   # likewise lineamientos, tratados
+python scripts/backfill_scjn_classification.py --coleccion reglamentos   # likewise lineamientos, tratados, estatutos
 python scripts/empaqueta_scjn_leyes.py
 python scripts/empaqueta_scjn_coleccion.py --coleccion reglamentos
 # then publish what PUBLICAR.md says: only the index asset changed, so
 gh release upload scjn-leyes indice-global.json.gz --repo legistlan/scjn --clobber
 ```
+
+`scjn-estatutos` (the federal instruments the SCJN classifies `ESTATUTO`, 379 at the
+audit of 13 November 2026) is crawled the same way as the other id-keyed collections, but
+it is **not published yet**: its discovery, crawl and publication are still a human's to run.
 
 The three scripts that link laws to the DOF (`discover_federal_laws.py`,
 `fetch_scjn_legislacion.py`, `recrawl_scjn_outline.py`) import `dofjson` and

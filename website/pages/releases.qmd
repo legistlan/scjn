@@ -2,8 +2,8 @@
 title: "Releases"
 ---
 
-The data is never committed to the repository: the corpora live in four
-GitHub releases.
+The data is never committed to the repository: the corpora live in five
+GitHub releases, four of them published today.
 
 | Release | Content | Keyed by |
 |---|---|---|
@@ -11,6 +11,7 @@ GitHub releases.
 | `scjn-reglamentos` | federal *reglamentos* | `id_ordenamiento` |
 | `scjn-lineamientos` | federal *lineamientos* | `id_ordenamiento` |
 | `scjn-tratados` | international treaties | `id_ordenamiento` |
+| `scjn-estatutos` | federal *estatutos* (the SCJN's category `ESTATUTO`); **not published yet** | `id_ordenamiento` |
 
 Each release carries an index plus one tarball per instrument. An instrument
 with no consolidated text is indexed with `snapshots: 0` and has no tarball;
@@ -37,7 +38,7 @@ probes `-1`, `-2`, ... until one answers 404.
 
 ## Where the releases live
 
-The four releases live in this repository,
+The releases live in this repository,
 [`legistlan/scjn`](https://github.com/legistlan/scjn/releases), and that is the
 repository `scjn.release.release_repository()` names by default.
 Set the environment variable `SCJN_RELEASE_REPOSITORY` (`<owner>/<name>`) to

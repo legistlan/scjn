@@ -7,10 +7,11 @@ the present tense; a decision that outlives an issue is recorded here as a bulle
 
 `scjn` is the client for the Suprema Corte de Justicia de la Nación's SCOW JSON API (`scjn.api`,
 the backend of `legislacion.scjn.gob.mx/consulta`), the writer of the Markdown snapshots of an
-instrument's reforms (`scjn.markdown`, `scjn.outline`) and the disk-first reader of the four SCJN
+instrument's reforms (`scjn.markdown`, `scjn.outline`) and the disk-first reader of the five SCJN
 releases (`scjn.release`): `scjn-leyes` (315 federal laws, reform-dated snapshots, keyed by
-`abrev`) and the id-keyed `scjn-reglamentos`, `scjn-lineamientos` and `scjn-tratados` (keyed by
-`id_ordenamiento`). The SCJN is not an official source of legal text; the *Diario Oficial de la
+`abrev`) and the id-keyed `scjn-reglamentos`, `scjn-lineamientos`, `scjn-tratados` and
+`scjn-estatutos` (keyed by `id_ordenamiento`; `scjn-estatutos`, the federal `ESTATUTO` instruments,
+is not published yet). The SCJN is not an official source of legal text; the *Diario Oficial de la
 Federación* is, and `fuente: scjn` in a provenance header means exactly that.
 
 It is one package of the Legistlan project (the `legistlan` organization): `nota2md` requires
@@ -32,7 +33,7 @@ message, a comment or a docstring is an issue of the monorepo, where those issue
 - **Entry points** for `scjn-leyes`: `download_scjn_leyes_index`/`_corpus`/`_catalog`,
   `markdown_de_snapshot`, `iter_current_federal_laws`, `local_slugs`,
   `download_scjn_leyes_assets`, `AssetNotCached`; the three id-keyed siblings have the same names
-  with `reglamentos`/`lineamientos`/`tratados` (`iter_current_*` included) and raise
+  with `reglamentos`/`lineamientos`/`tratados`/`estatutos` (`iter_current_*` included) and raise
   `SinTextoEnSCJN` for an instrument with no text. Every reader reads only the cache and raises
   `AssetNotCached` rather than downloading; only `download_*_assets` and `scjn download` talk to
   the network.
@@ -88,7 +89,7 @@ writes into `md2akn`'s own repository (`tests/fixtures_units/marker_vocabulary.j
 
 ## Data: the releases and the cache
 
-- **Data is never committed.** The corpora live in the four GitHub releases and in the gitignored
+- **Data is never committed.** The corpora live in the GitHub releases and in the gitignored
   `scripts/scjn/` (the crawl's output, the raw answers, the packaged releases). A release series
   is resolved by asking GitHub: a part keeps the bare tag, a continuation adds `-<n>`, and the
   reader probes `-1`, `-2`, ... until one 404s; a release holds at most 1,000 assets. An instrument
@@ -97,12 +98,13 @@ writes into `md2akn`'s own repository (`tests/fixtures_units/marker_vocabulary.j
   can return a completely wrong document for an instrument, so a human decides what is safe to
   publish). Every packaging script writes a `PUBLICAR.md` and uploads nothing; a regenerated
   release is replaced in place (same tag, `--clobber`).
-- **Copying the releases.** `scripts/copy_scjn_releases.py <owner>/<name>` copies the four series from a
-  source repository to this one (title, body and every asset, byte for byte; `--destination`, `--tag`,
+- **Copying the releases.** `scripts/copy_scjn_releases.py <owner>/<name>` copies the release series from a
+  source repository to this one (a series the source lacks, like the unpublished `scjn-estatutos`,
+  is reported and skipped) (title, body and every asset, byte for byte; `--destination`, `--tag`,
   `--batch`, `--dry-run`), uploads in retried batches, resumes by rerunning and exits non-zero unless
   names, sizes and digests match. It is how a move of owner is done; it publishes nothing new and names
   no source repository (a required argument). Downloads land in the gitignored `scripts/scjn/release-copy/`.
-- **The releases' owner.** This repository owns the four releases: `scjn.release.DEFAULT_RELEASE_REPOSITORY`
+- **The releases' owner.** This repository owns the releases: `scjn.release.DEFAULT_RELEASE_REPOSITORY`
   names it (`legistlan/scjn`), and the environment variable `SCJN_RELEASE_REPOSITORY`
   (`<owner>/<name>`, read on every call by `release_repository`) points every lookup, and the `gh`
   commands `PUBLICAR.md` prints, at a mirror of the releases elsewhere. Changing the default is a
@@ -117,10 +119,11 @@ writes into `md2akn`'s own repository (`tests/fixtures_units/marker_vocabulary.j
 A human runs the publish step.
 
 1. `scripts/discover_federal_laws.py` / `discover_federal_reglamentos.py` /
-   `discover_federal_lineamientos.py` / `discover_federal_tratados.py` list candidates and stop
+   `discover_federal_lineamientos.py` / `discover_federal_tratados.py` /
+   `discover_federal_estatutos.py` list candidates and stop
    (no state is written; a new law is a human's decision). `scjn.discovery` holds the shared
    paging and rescue rules.
-2. `scripts/seed_federal_reglamentos.py --coleccion {reglamentos,lineamientos,tratados}` turns a
+2. `scripts/seed_federal_reglamentos.py --coleccion {reglamentos,lineamientos,tratados,estatutos}` turns a
    reviewed list into `estado.json` files, idempotently.
 3. `scripts/fetch_scjn_legislacion.py` crawls (`--coleccion`, `--plan`, and for `leyes` only
    `--actualiza`/`--solo-fecha`/`--dof-only`/`--reintenta`); `scripts/recrawl_scjn_outline.py`

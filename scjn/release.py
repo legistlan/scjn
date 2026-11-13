@@ -52,7 +52,7 @@ _HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; legistlan-scjn/1.0)"}
 #: -- `GH_TOKEN` before `GITHUB_TOKEN`, the `gh` CLI's own precedence.
 _TOKEN_VARIABLES = ("GH_TOKEN", "GITHUB_TOKEN")
 
-#: The repository that owns the four releases, as ``<owner>/<name>``, when
+#: The repository that owns the releases, as ``<owner>/<name>``, when
 #: `RELEASE_REPOSITORY_VARIABLE` is not set: this repository. The variable
 #: points a reader at a mirror (another ``<owner>/<name>`` holding releases of
 #: the same shape); changing the default is a release of this package.

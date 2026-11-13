@@ -42,8 +42,8 @@ for law in scjn.iter_current_federal_laws(["lfca"]):
 
 ## The id-keyed releases
 
-`scjn-reglamentos`, `scjn-lineamientos` and `scjn-tratados` have the same
-functions with `reglamentos`, `lineamientos` or `tratados` in the name, keyed by
+`scjn-reglamentos`, `scjn-lineamientos`, `scjn-tratados` and `scjn-estatutos` have the same
+functions with `reglamentos`, `lineamientos`, `tratados` or `estatutos` in the name, keyed by
 `id_ordenamiento` rather than by slug:
 
 ```python
@@ -57,8 +57,10 @@ for reglamento in scjn.iter_current_reglamentos():
 ```
 
 `download_scjn_lineamientos_*`, `download_scjn_tratados_*`,
-`local_lineamientos_ids`, `local_tratados_ids`, `iter_current_lineamientos` and
-`iter_current_tratados` follow the same pattern. An instrument with no
+`download_scjn_estatutos_*`, `local_lineamientos_ids`, `local_tratados_ids`,
+`local_estatutos_ids`, `iter_current_lineamientos`, `iter_current_tratados` and
+`iter_current_estatutos` follow the same pattern. The `scjn-estatutos` release is not
+published yet: until it is, its readers raise `AssetNotCached`. An instrument with no
 consolidated text raises `SinTextoEnSCJN`.
 
 ## What only `leyes` has

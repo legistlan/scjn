@@ -278,6 +278,27 @@ class TestMain:
         assert code == 0
         assert set(gh.repos[DST]) == {"scjn-reglamentos-2"}
 
+    def test_a_series_the_source_does_not_have_is_reported_and_skipped(self, gh):
+        # issue #9: `scjn-estatutos` exists nowhere yet. It is one of the BASES, and its absence
+        # is neither an error nor a reason to stop the series that do exist.
+        assert "scjn-estatutos" in c.BASES
+        _populate_source(gh)
+        code, out, err = _main(gh)
+        assert code == 0
+        assert "not in example/source (skipped): scjn-lineamientos, scjn-tratados, scjn-estatutos" in out
+        assert out.splitlines()[-1] == "copy verified: 3 releases, 5 assets"
+        assert not any("scjn-estatutos" in " ".join(cmd) for cmd in gh.calls if "create" in cmd)
+        assert "scjn-estatutos" not in gh.repos[DST]
+
+    def test_a_published_estatutos_series_is_copied_like_the_others(self, gh):
+        _populate_source(gh)
+        gh.release(SRC, "scjn-estatutos", "SCJN — estatutos", "e", {"5001.tgz": (7, None)})
+        code, out, _ = _main(gh)
+        assert code == 0
+        assert "scjn-estatutos" in gh.repos[DST]
+        assert "not in example/source (skipped): scjn-lineamientos, scjn-tratados\n" in out
+        assert out.splitlines()[-1] == "copy verified: 4 releases, 6 assets"
+
     def test_an_unknown_tag_stops(self, gh):
         _populate_source(gh)
         with contextlib.redirect_stdout(io.StringIO()), pytest.raises(SystemExit):

@@ -32,7 +32,14 @@ import requests
 
 from scjn import cache
 from scjn.outline import strip_markers
-from scjn.cache import _SCJN_LEYES_RELEASE, LINEAMIENTOS, REGLAMENTOS, TRATADOS, Coleccion
+from scjn.cache import (
+    _SCJN_LEYES_RELEASE,
+    ESTATUTOS,
+    LINEAMIENTOS,
+    REGLAMENTOS,
+    TRATADOS,
+    Coleccion,
+)
 from scjn.header import _fecha
 from scjn.state import ARCHIVO_ESTADO
 
@@ -961,6 +968,28 @@ def construye_indice_global_tratados(instrumentos: list[dict], generado: str) ->
     return _indice_global_por_id("tratados", instrumentos, generado)
 
 
+def construye_indice_global_estatutos(instrumentos: list[dict], generado: str) -> dict:
+    """The `scjn-estatutos` release's own `indice-global.json.gz` payload —
+    the `estatutos` sibling of `construye_indice_global_lineamientos` (issue
+    #9), same shape, `coleccion: "estatutos"`:
+
+    >>> from scjn import release
+    >>> indice = release.construye_indice_global_estatutos(
+    ...     [{"id_ordenamiento": "5001", "nombre": "ESTATUTO ORGANICO...",
+    ...       "snapshots": 1, "categoria_ordenamiento": "ESTATUTO",
+    ...       "ambito": "FEDERAL", "vigencia": "VIGENTE"}],
+    ...     "2026-11-13",
+    ... )
+    >>> indice["coleccion"]
+    'estatutos'
+    >>> indice["instrumentos"]["5001"]["categoria_ordenamiento"]
+    'ESTATUTO'
+    >>> indice["instrumentos"]["5001"]["asset"]
+    '5001.tgz'
+    """
+    return _indice_global_por_id("estatutos", instrumentos, generado)
+
+
 #: `_index_de_release`'s in-process memo, keyed by `(coleccion, cache_dir)` --
 #: the id-keyed sibling of `_MEMO_INDICE_GLOBAL` (issue #222's Fase 0;
 #: previously one hand-duplicated dict per collection).
@@ -1291,6 +1320,57 @@ def download_scjn_tratados_assets(
     )
 
 
+# --- `scjn-estatutos` (issue #9): public wrappers over the generic core -----
+# The release is not published yet: until it is, every reader below raises
+# `AssetNotCached` (no network) and `download_scjn_estatutos_assets` finds no
+# release to read.
+
+def _assets_scjn_estatutos(timeout: int = 30) -> dict[str, str]:
+    """Every asset of the `scjn-estatutos` release, name -> download URL —
+    the `estatutos` sibling of `_assets_scjn_lineamientos` (issue #9),
+    merged across every part of its series. Network — used by the
+    downloader only, never by a reader."""
+    return _assets_de_partes(ESTATUTOS.tag_base, timeout)
+
+
+def download_scjn_estatutos_index(*, cache_dir=None) -> dict:
+    """The `scjn-estatutos` release's own `indice-global.json.gz`
+    (`construye_indice_global_estatutos`'s payload) — a thin wrapper over
+    `_index_de_release` (issue #9)."""
+    return _index_de_release(ESTATUTOS, cache_dir=cache_dir)
+
+
+def download_scjn_estatutos_corpus(id_ordenamiento: str | int, *, cache_dir=None) -> dict:
+    """One `estatutos` instrument, by its own `id_ordenamiento` — a thin
+    wrapper over `_corpus_de_release` (issue #9); see its own docstring for
+    the payload shape and the `AssetNotCached`/`SinTextoEnSCJN` raise
+    order."""
+    return _corpus_de_release(ESTATUTOS, id_ordenamiento, cache_dir=cache_dir)
+
+
+def local_estatutos_ids(cache_dir=None) -> list[str]:
+    """Every estatuto with a `<id_ordenamiento>.tgz` already on disk under
+    `cache_dir` — a thin wrapper over `_local_ids_de_release` (issue #9)."""
+    return _local_ids_de_release(ESTATUTOS, cache_dir)
+
+
+def download_scjn_estatutos_assets(
+    ids: list[str] | None = None,
+    *,
+    cache_dir=None,
+    refrescar: bool = False,
+    timeout: int = 60,
+    log=None,
+) -> list[tuple[Path, bool]]:
+    """Put the `scjn-estatutos` release's assets on disk — a thin wrapper
+    over `_download_assets_de_release` (issue #9); see its own docstring
+    for the full contract."""
+    return _download_assets_de_release(
+        ESTATUTOS, _assets_scjn_estatutos, ids,
+        cache_dir=cache_dir, refrescar=refrescar, timeout=timeout, log=log,
+    )
+
+
 # --- The current text of an id-keyed instrument (issue #227's Fase 2) -------
 
 def _iter_current_de_release(
@@ -1402,3 +1482,12 @@ def iter_current_tratados(
     release publishes — the `tratados` sibling of `iter_current_reglamentos`
     (issue #277)."""
     return _iter_current_de_release(TRATADOS, ids, cache_dir=cache_dir)
+
+
+def iter_current_estatutos(
+    ids: list[str] | None = None, *, cache_dir=None
+) -> Iterator[dict]:
+    """The current text of every federal *estatuto* the `scjn-estatutos`
+    release publishes — the `estatutos` sibling of `iter_current_reglamentos`
+    (issue #9)."""
+    return _iter_current_de_release(ESTATUTOS, ids, cache_dir=cache_dir)

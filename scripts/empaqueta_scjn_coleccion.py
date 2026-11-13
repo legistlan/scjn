@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Package an id-keyed SCJN corpus (`reglamentos`, issue #220; `lineamientos`,
-issue #222; `tratados`, issue #277) into one byte-reproducible tarball *per instrument with text*,
+issue #222; `tratados`, issue #277; `estatutos`, issue #9) into one byte-reproducible tarball *per instrument with text*,
 plus a human-readable manifest and a checksum file. Shared by the three
 id-keyed collections (generalized out of the `reglamentos`-only
 `empaqueta_scjn_reglamentos.py` in issue #222's Fase 0), without
@@ -96,6 +96,7 @@ from scjn.release import (  # noqa: E402
     CAMPOS_METADATOS,
     LIMITE_ASSETS_POR_RELEASE,
     _tag_de_parte,
+    construye_indice_global_estatutos,
     construye_indice_global_lineamientos,
     construye_indice_global_reglamentos,
     construye_indice_global_tratados,
@@ -105,11 +106,12 @@ from scjn.state import lee_estado  # noqa: E402
 
 #: Each id-keyed collection's own index builder -- keyed by
 #: `Coleccion.nombre`, same shape as `scjn.cli`'s own `_DESCARGAS_POR_ID`. A
-#: fourth id-keyed collection adds one entry here, never a new branch.
+#: further id-keyed collection adds one entry here, never a new branch.
 _INDICES_POR_ID = {
     "reglamentos": construye_indice_global_reglamentos,
     "lineamientos": construye_indice_global_lineamientos,
     "tratados": construye_indice_global_tratados,
+    "estatutos": construye_indice_global_estatutos,
 }
 
 #: GitHub's release-body cap (issue #223) -- `MANIFEST.md` grows with the

@@ -1485,7 +1485,9 @@ class TestIdKeyedWrappers(unittest.TestCase):
         (directorio / f"{id_ordenamiento}.tgz").write_bytes(_hacer_tgz(archivos))
 
     def test_every_collection_of_the_registry_is_covered_by_a_wrapper_set(self):
-        self.assertEqual(sorted(COLECCIONES_POR_ID), ["lineamientos", "reglamentos", "tratados"])
+        self.assertEqual(
+            sorted(COLECCIONES_POR_ID), ["estatutos", "lineamientos", "reglamentos", "tratados"]
+        )
 
     @_por_coleccion
     def test_construye_indice_global_no_lleva_codnota_y_solo_indexa_asset_si_hay_texto(self, nombre, cache, directorio, f):
@@ -1601,6 +1603,37 @@ class TestIdKeyedWrappers(unittest.TestCase):
         self.assertEqual(instrumento["nombre"], "X")
         self.assertNotIn("abrev", instrumento)
 
+    def test_estatutos_sin_nada_en_cache_lanzan_asset_not_cached_sin_tocar_la_red(self):
+        # Issue #9: `scjn-estatutos` is not published yet, so the first thing every
+        # reader meets is a cold cache; none of them may make a request.
+        with patch("requests.get", side_effect=ConnectionError("network unreachable")) as mock_get:
+            with self.assertRaises(release.AssetNotCached) as ctx:
+                release.download_scjn_estatutos_index(cache_dir=self.tmp)
+            self.assertIn("--coleccion estatutos", str(ctx.exception))
+            with self.assertRaises(release.AssetNotCached):
+                release.download_scjn_estatutos_corpus("5001", cache_dir=self.tmp)
+            # Like its lineamientos sibling: walking "what this machine has" over an empty
+            # cache yields nothing, and naming an id that is not cached raises.
+            self.assertEqual(list(release.iter_current_estatutos(cache_dir=self.tmp)), [])
+            with self.assertRaises(release.AssetNotCached):
+                list(release.iter_current_estatutos(["5001"], cache_dir=self.tmp))
+            self.assertEqual(release.local_estatutos_ids(self.tmp), [])
+        mock_get.assert_not_called()
+
+    def test_el_indice_de_estatutos_lleva_la_clasificacion(self):
+        indice = release.construye_indice_global_estatutos(
+            [{"id_ordenamiento": "5001", "nombre": "ESTATUTO ORGANICO", "snapshots": 1,
+              "categoria_ordenamiento": "ESTATUTO", "ambito": "FEDERAL", "pais": "MÉXICO"}],
+            generado="x",
+        )
+
+        entrada = indice["instrumentos"]["5001"]
+        self.assertEqual(
+            (entrada["categoria_ordenamiento"], entrada["ambito"], entrada["pais"]),
+            ("ESTATUTO", "FEDERAL", "MÉXICO"),
+        )
+        self.assertNotIn("estado", entrada)
+
     def test_reexportados_desde_el_paquete(self):
         import scjn
 
@@ -1611,7 +1644,7 @@ class TestIdKeyedWrappers(unittest.TestCase):
                 with self.subTest(funcion=funcion):
                     self.assertIn(funcion, scjn.__all__)
                     self.assertTrue(callable(getattr(scjn, funcion)))
-        self.assertEqual(scjn.__version__, "0.5.2")
+        self.assertEqual(scjn.__version__, "0.6.0")
 
 
 class TestIterCurrentPorId(ConCacheFixtureReglamentos):

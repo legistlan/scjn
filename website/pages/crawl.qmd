@@ -29,7 +29,8 @@ human runs the publish step.
    instrument and merges `categoria_ordenamiento`, `ambito`, `pais`, `estado`,
    `municipio`, `materia`, `vigencia` and `resumen` into its `estado.json`. It
    keeps only the hit whose `idOrdenamiento` equals the instrument's own, never
-   ranks, is resumable (an instrument that already has `ambito` is skipped unless
+   ranks, is resumable (an instrument whose `estado.json` already has the stamp
+   `clasificacion_consultada`, written by this script, is skipped unless
    `--force`), warns about and skips a transport error and always exits 0;
    `--dry-run` writes nothing. It talks to the network (about 2,900 instruments,
    roughly 30 to 60 minutes), so a human runs it, after the crawl and before

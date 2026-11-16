@@ -30,10 +30,23 @@ index; the hit is the one whose `idOrdenamiento` equals the instrument's own
 Hallazgo C). An instrument the search does not surface is printed and left
 alone, never guessed.
 
-**Resumable.** An instrument whose `estado.json` already has `ambito` is
-skipped unless `--force`. A transport error on one instrument is warned
-about and skipped, so rerunning picks it up. The exit status is 0 whatever
-the misses and the transport errors; it is 1 only for a bad invocation.
+**Resumable.** Every instrument the search answered for gets a stamp,
+`clasificacion_consultada` (today's date, `YYYY-MM-DD`, like `rastreado`), in
+the same `escribe_estado` call as the fields; an instrument that has the
+stamp is skipped unless `--force`. The stamp, not `ambito`, is the marker: the
+crawl and the seed write `ambito` too (every crawled `tratados` instrument had
+it), so its presence says nothing about whether `pais`/`estado`/`municipio`
+were ever asked for. The stamp is written even when the hit had no field to
+write, and never for an instrument not found, untitled or failed (those are
+asked again on the next run) nor with `--dry-run`. It is not copied into any
+index; like `rastreado` it only travels inside the tarball's `estado.json`.
+An instrument backfilled before the stamp existed has none, so the next run
+asks for it once more.
+
+A transport error on one instrument (`ScjnApiError`, or any
+`requests.RequestException`: a DNS failure, a timeout) is warned about and
+skipped, so rerunning picks it up. The exit status is 0 whatever the misses
+and the transport errors; it is 1 only for a bad invocation.
 
 `--dry-run` calls the SCJN and prints what would be written, and writes
 nothing. Nothing here publishes: after the backfill a human re-packages the
@@ -42,7 +55,10 @@ collection (`empaqueta_scjn_*.py`) and publishes the regenerated index asset.
 
 import argparse
 import sys
+from datetime import date
 from pathlib import Path
+
+import requests
 
 # Run straight from a clone, without `pip install -e .` first.
 _RAIZ = Path(__file__).resolve().parent.parent
@@ -69,9 +85,11 @@ CAMPOS_DE_ESTADO = {
     "resumen": "resumen",
 }
 
-#: The marker of "already backfilled": every hit of the SCJN's search carries
-#: an `ambito`, so a state without it was never filled.
-CAMPO_MARCA = "ambito"
+#: The `estado.json` key that marks "the SCJN's search was asked for this
+#: instrument and answered for it": today's date. Spanish like the other
+#: bookkeeping keys of the file (`rastreado`, `clasificado`, `enlazado`). Not
+#: `ambito`: the crawl and the seed write that one too.
+STAMP_KEY = "clasificacion_consultada"
 
 
 def _titulo(directorio: Path, estado: dict) -> str | None:
@@ -119,7 +137,7 @@ def backfill(
         if claves is not None and clave not in claves:
             continue
         estado = lee_estado(directorio)
-        if estado.get(CAMPO_MARCA) and not force:
+        if estado.get(STAMP_KEY) and not force:
             result["skipped"].append(clave)
             continue
         id_ordenamiento = estado.get("id_ordenamiento")
@@ -132,7 +150,9 @@ def backfill(
             continue
         try:
             hit = instrument_metadata(api, titulo, id_ordenamiento)
-        except ScjnApiError as exc:
+        except (ScjnApiError, requests.RequestException) as exc:
+            # `scjn.api` wraps only some failures in `ScjnApiError`; a DNS failure or a
+            # timeout reaches here as a `requests` exception and must not end the run.
             log(f"  warning: {clave}: the search failed ({exc}) -- skipped")
             result["failed"].append(clave)
             continue
@@ -145,8 +165,8 @@ def backfill(
             for campo, atributo in CAMPOS_DE_ESTADO.items()
             if getattr(hit, atributo)
         }
-        if not dry_run and campos:
-            escribe_estado(directorio, **campos)
+        if not dry_run:
+            escribe_estado(directorio, **campos, **{STAMP_KEY: date.today().isoformat()})
         log(f"  {clave}: {'would write' if dry_run else 'wrote'} {sorted(campos)}")
         result["written"].append(clave)
     return result
@@ -170,7 +190,7 @@ def main(argv=None) -> int:
         help="only this slug (leyes); repeatable",
     )
     parser.add_argument(
-        "--force", action="store_true", help="also the instruments that already have 'ambito'"
+        "--force", action="store_true", help="also the instruments already stamped (clasificacion_consultada)"
     )
     parser.add_argument(
         "--dry-run", action="store_true", help="ask the SCJN, write nothing"
@@ -195,7 +215,7 @@ def main(argv=None) -> int:
     log(
         f"{args.coleccion}: {len(result['written'])} "
         f"{'to write (--dry-run)' if args.dry_run else 'written'}, "
-        f"{len(result['skipped'])} already filled, "
+        f"{len(result['skipped'])} already stamped, "
         f"{len(result['not_found'])} not found, "
         f"{len(result['untitled'])} without title/id, {len(result['failed'])} failed"
     )

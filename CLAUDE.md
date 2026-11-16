@@ -50,7 +50,8 @@ message, a comment or a docstring is an issue of the monorepo, where those issue
   with no value) and out of every reader (the keys are always returned, `None` where the index has
   none; an index published before a field existed lacks it, which is not an error).
   `scripts/backfill_scjn_classification.py` fills them into the `estado.json` of instruments already
-  crawled (match by `idOrdenamiento` only, resumable, never ranks); a human runs it, re-packages
+  crawled (match by `idOrdenamiento` only, never ranks, resumable through the
+  `clasificacion_consultada` stamp it writes in `estado.json`, skips transport errors and exits 0); a human runs it, re-packages
   and publishes the index asset.
 - **No source other than the SCJN**: the Cámara de Diputados (LeyesBiblio) is not a source.
 

@@ -6,7 +6,10 @@ API and a temporary corpus -- no network. Run with
 
 import json
 import sys
+from datetime import date
 from pathlib import Path
+
+import requests
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
@@ -96,27 +99,72 @@ def test_an_empty_value_does_not_erase_one_already_on_file(tmp_path):
     assert _estado(d)["resumen"] == "ya estaba"
 
 
-def test_skips_an_instrument_that_already_has_ambito(tmp_path):
+def test_an_estado_with_ambito_but_no_stamp_is_queried(tmp_path):
+    # Review fix-1: the crawl and the seed write `ambito` too (every crawled `tratados`
+    # instrument had it), so it must not count as "already backfilled".
     d = _instrumento(tmp_path, "tratados", "10", id_ordenamiento="10", nombre="T10",
-                     ambito="FEDERAL")
+                     ambito="TRATADOS INTERNACIONALES", categoria_ordenamiento="CONVENIO")
+    api = FakeApi({"T10": [_hit(10, "T10")]})
+
+    resultado = _corre(tmp_path, "tratados", api)
+
+    assert resultado["written"] == ["10"] and resultado["skipped"] == []
+    assert api.busquedas == ["T10"]
+    assert _estado(d)["pais"] == "FRANCIA"
+
+
+def test_skips_an_instrument_that_already_has_the_stamp(tmp_path):
+    d = _instrumento(tmp_path, "tratados", "10", id_ordenamiento="10", nombre="T10",
+                     clasificacion_consultada="2026-11-01")
     api = FakeApi({"T10": [_hit(10, "T10")]})
 
     resultado = _corre(tmp_path, "tratados", api)
 
     assert resultado["skipped"] == ["10"]
     assert api.busquedas == []
-    assert _estado(d)["ambito"] == "FEDERAL"
+    assert _estado(d)["clasificacion_consultada"] == "2026-11-01"
+    assert "pais" not in _estado(d)
 
 
 def test_force_asks_again_and_overwrites(tmp_path):
     d = _instrumento(tmp_path, "tratados", "10", id_ordenamiento="10", nombre="T10",
-                     ambito="FEDERAL")
+                     ambito="FEDERAL", clasificacion_consultada="2026-11-01")
     api = FakeApi({"T10": [_hit(10, "T10")]})
 
     resultado = _corre(tmp_path, "tratados", api, force=True)
 
     assert resultado["written"] == ["10"]
     assert _estado(d)["ambito"] == "TRATADOS INTERNACIONALES"
+    assert _estado(d)["clasificacion_consultada"] == date.today().isoformat()
+
+
+def test_a_written_instrument_gets_todays_stamp_even_with_no_field_to_write(tmp_path):
+    vacio = Ordenamiento(idOrdenamiento="10", ordenamiento="T10")
+    d = _instrumento(tmp_path, "tratados", "10", id_ordenamiento="10", nombre="T10")
+
+    _corre(tmp_path, "tratados", FakeApi({"T10": [vacio]}))
+
+    assert _estado(d) == {
+        "id_ordenamiento": "10", "nombre": "T10",
+        "clasificacion_consultada": date.today().isoformat(),
+    }
+
+
+def test_not_found_failed_untitled_and_dry_run_get_no_stamp(tmp_path):
+    nf = _instrumento(tmp_path, "tratados", "1", id_ordenamiento="1", nombre="NF")
+    ko = _instrumento(tmp_path, "tratados", "2", id_ordenamiento="2", nombre="KO")
+    sin = _instrumento(tmp_path, "tratados", "3", id_ordenamiento="3")
+    seco = _instrumento(tmp_path, "tratados", "4", id_ordenamiento="4", nombre="SECO")
+    api = FakeApi({"NF": [_hit(99, "NF")], "SECO": [_hit(4, "SECO")]},
+                  errores={"KO": ScjnApiError("503")})
+
+    _corre(tmp_path, "tratados", api, dry_run=True)
+    for d in (nf, ko, sin, seco):
+        assert "clasificacion_consultada" not in _estado(d)
+    _corre(tmp_path, "tratados", api)
+    for d in (nf, ko, sin):
+        assert "clasificacion_consultada" not in _estado(d)
+    assert _estado(seco)["clasificacion_consultada"] == date.today().isoformat()
 
 
 def test_dry_run_asks_but_writes_nothing(tmp_path):
@@ -142,6 +190,38 @@ def test_a_transport_error_on_one_instrument_does_not_stop_the_others(tmp_path):
     assert resultado["written"] == ["2"]
     assert "ambito" not in _estado(malo)
     assert _estado(bueno)["ambito"] == "TRATADOS INTERNACIONALES"
+
+
+def test_a_requests_exception_on_one_instrument_does_not_stop_the_run(tmp_path):
+    # Review fix-1: a DNS failure is a `requests` exception, not a `ScjnApiError`.
+    malo = _instrumento(tmp_path, "tratados", "1", id_ordenamiento="1", nombre="MALO")
+    lento = _instrumento(tmp_path, "tratados", "2", id_ordenamiento="2", nombre="LENTO")
+    bueno = _instrumento(tmp_path, "tratados", "3", id_ordenamiento="3", nombre="BUENO")
+    api = FakeApi(
+        {"BUENO": [_hit(3, "BUENO")]},
+        errores={"MALO": requests.exceptions.ConnectionError("NameResolutionError"),
+                 "LENTO": requests.exceptions.Timeout("timed out")},
+    )
+
+    resultado = _corre(tmp_path, "tratados", api)
+
+    assert sorted(resultado["failed"]) == ["1", "2"]
+    assert resultado["written"] == ["3"]
+    assert "ambito" not in _estado(malo) and "ambito" not in _estado(lento)
+    assert _estado(bueno)["ambito"] == "TRATADOS INTERNACIONALES"
+
+
+def test_main_returns_zero_when_every_search_raises_a_requests_exception(tmp_path, monkeypatch, capsys):
+    _instrumento(tmp_path, "tratados", "10", id_ordenamiento="10", nombre="T10")
+    monkeypatch.setattr(
+        bf, "ScjnApi",
+        lambda espera: FakeApi(errores={"T10": requests.exceptions.ConnectionError("dns")}),
+    )
+
+    codigo = bf.main(["--coleccion", "tratados", "--outdir", str(tmp_path)])
+
+    assert codigo == 0
+    assert "1 failed" in capsys.readouterr().err
 
 
 def test_leyes_take_the_title_from_a_snapshot_header_when_estado_has_none(tmp_path):

@@ -108,9 +108,9 @@ LIMITE_ASSETS_POR_RELEASE = 1000
 #: raise, not loop forever.
 _MAX_PARTES = 50
 
-#: The index published alongside the per-law tarballs: one entry per
-#: instrument (name, asset, snapshot count, classification), stripped of all
-#: text, so listing the corpus costs a few hundred KB instead of the ~380 MB
+#: The index published alongside the per-law tarballs, with one entry per
+#: instrument (name, asset, snapshot count, classification) and no text at
+#: all, so listing the corpus costs a few hundred KB instead of the ~380 MB
 #: the whole corpus weighs.
 ASSET_INDICE_GLOBAL = "indice-global.json.gz"
 

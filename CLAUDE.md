@@ -14,9 +14,16 @@ releases (`scjn.release`): `scjn-leyes` (315 federal laws, reform-dated snapshot
 is not published yet). The SCJN is not an official source of legal text; the *Diario Oficial de la
 Federación* is, and `fuente: scjn` in a provenance header means exactly that.
 
-It is one package of the Legistlan project (the `legistlan` organization): `nota2md` requires
-`scjn>=0.5.1` and re-exports its readers; `scjn` itself imports no sibling, and
-`tests/test_boundary.py` greps the package for `nota2md`/`dofjson` to keep it so. It was
+**This repository and its releases hold SCJN data only.** The link between an SCJN snapshot and the
+DOF note (`codNota`) that published it, the DOF text of candidate notes and the DOF dates used to
+decide whether a law is up to date are not here and not in any release: that DOF linking lives
+outside this repository. A `leyes` tarball ships the snapshots and `estado.json`, nothing else; the
+freshness of a law is decided by the SCJN alone (`actualizado_scjn`, the reform-table row
+comparison of `--plan`).
+
+It is one package of the Legistlan project (the `legistlan` organization); `scjn` itself imports no
+sibling, and `tests/test_boundary.py` greps the package for `nota2md`/`dofjson` and the scripts
+for any import of either to keep it so. It was
 `packages/scjn` of a monorepo until 9 November 2026 (monorepo commit
 `f403872b1`); this repository is that history filtered to the package, its crawl scripts and its
 documentation page, so `git log` and `git blame` reach the first commit. A `#N` in a commit
@@ -37,11 +44,14 @@ message, a comment or a docstring is an issue of the monorepo, where those issue
   `SinTextoEnSCJN` for an instrument with no text. Every reader reads only the cache and raises
   `AssetNotCached` rather than downloading; only `download_*_assets` and `scjn download` talk to
   the network.
-- Only `leyes` has an `abrev`, an `actualizado` (`actualizado_scjn`, `actualizado_dof`), an
-  `indice.json` and DOF linking; the id-keyed collections have none. An `abrev` is the release's
-  slug and asset name, never re-derived. "Reform N" of a law is the SCJN reform table's
-  chronological order. `codNota` linking lives one layer up, in `nota2md`: a `codNota` is a DOF
-  concept.
+- Only `leyes` has an `abrev` and an `actualizado` (`actualizado_scjn`); the id-keyed collections
+  have none. An `abrev` is the release's slug and asset name, never re-derived. "Reform N" of a law
+  is the SCJN reform table's chronological order.
+- **Old releases are still read.** The `scjn-leyes` release published before the DOF linking left
+  this repository has a `codNota` section in its index and an `indice.json` and `notas/` in every
+  tarball: the readers ignore them (`tests/test_release.py` covers that shape), and the packager
+  never ships them nor the `estado.json` keys the linking wrote (`CLAVES_ESTADO_DOF` in
+  `scripts/empaqueta_scjn_leyes.py`).
 - **The classification of an instrument** (one value per instrument, never in a snapshot's
   provenance header): `scjn.release.CAMPOS_METADATOS` (`materia`, `vigencia`, `resumen`) and
   `CAMPOS_CLASIFICACION` (`categoria_ordenamiento`, `ambito`, `pais`, `estado`, `municipio`).
@@ -65,7 +75,7 @@ The SCOW API serves a reform as ordered *blocks* (`orden`, `numero`, `referencia
 `kind` is one of header, recitals, preamble, toc, transitorios, decree, container, article,
 provision, other. The marker is an HTML comment on purpose: no character of the text changes,
 `strip_markers` returns the text byte for byte, and `markdown_de_snapshot(..., outline=False)` is
-what `nota2md` reads. Every block that yields text has exactly one marker; a block that yields none
+what a caller that wants the plain law reads. Every block that yields text has exactly one marker; a block that yields none
 (an editorial `N. DE E.` aside) leaves its `orden` as a gap the raw answer explains; a marker is
 metadata, never embedded. The reader of the markers is `md2akn`, which imports nothing from here:
 the two are tied by the vocabulary fixture `scripts/verify_scjn_outline.py --write-vocabulary`
@@ -127,22 +137,19 @@ A human runs the publish step.
 2. `scripts/seed_federal_reglamentos.py --coleccion {reglamentos,lineamientos,tratados,estatutos}` turns a
    reviewed list into `estado.json` files, idempotently.
 3. `scripts/fetch_scjn_legislacion.py` crawls (`--coleccion`, `--plan`, and for `leyes` only
-   `--actualiza`/`--solo-fecha`/`--dof-only`/`--reintenta`); `scripts/recrawl_scjn_outline.py`
+   `--actualiza`/`--solo-fecha`/`--reintenta`); `scripts/recrawl_scjn_outline.py`
    re-crawls a whole corpus with the markers on; `scripts/rewrite_scjn_from_raw.py` rewrites
    Markdown from the kept raw answers without the network.
-4. Linking new `leyes` reforms to their `codNota` is `nota2md`'s `scripts/enlaza_scjn_legislacion.py`,
-   in that repository; the id-keyed collections have no DOF linking.
-5. `scripts/backfill_scjn_classification.py --coleccion ...` (network; for instruments crawled
+4. `scripts/backfill_scjn_classification.py --coleccion ...` (network; for instruments crawled
    before their `estado.json` had the whole classification), `scripts/verify_scjn_outline.py`, then
    `scripts/measure_block_gaps.py`.
-6. `scripts/empaqueta_scjn_leyes.py` / `scripts/empaqueta_scjn_coleccion.py --coleccion ...`
+5. `scripts/empaqueta_scjn_leyes.py` / `scripts/empaqueta_scjn_coleccion.py --coleccion ...`
    package the release (tarballs, `indice-global.json.gz`, `SHA256SUMS.txt`, `MANIFEST.md`,
    `partes.json`, `PUBLICAR.md`).
-7. **A human** reads `PUBLICAR.md` and publishes; only changed tarballs need `--clobber`.
+6. **A human** reads `PUBLICAR.md` and publishes; only changed tarballs need `--clobber`.
 
-The three scripts that link laws to the DOF (`discover_federal_laws.py`,
-`fetch_scjn_legislacion.py`, `recrawl_scjn_outline.py`) import `dofjson` and `nota2md` from PyPI,
-never the package: `uv sync --group scripts` or `pip install dofjson nota2md`.
+No script imports `dofjson` or `nota2md`, and there is no `scripts` dependency group: a clone runs
+every script with the package's own dependencies.
 
 ## Documentation
 
@@ -212,7 +219,7 @@ python scripts/check_package_versions.py                                  # one 
 - The codebase still mixes Spanish identifiers (`descarga_ordenamiento`, `versiones_de_directorio`,
   the Spanish CLI help of the scripts). Leave existing Spanish as it is when touching unrelated
   lines, no drive-by renames; new code, and code rewritten anyway, is English.
-- Domain terms that are proper nouns or established Mexican legal vocabulary (`SCJN`, `codNota`,
+- Domain terms that are proper nouns or established Mexican legal vocabulary (`SCJN`,
   `DOF`, `abrev`, law abbreviations like `cpeum`/`lft`) are names, not translated.
 
 ## Working conventions

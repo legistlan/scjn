@@ -66,8 +66,8 @@ consolidated text raises `SinTextoEnSCJN`.
 ## What only `leyes` has
 
 Only `scjn-leyes` has an `abrev` (the release's slug and asset name, never
-re-derived), an `actualizado` (`actualizado_scjn`, `actualizado_dof`), an
-`indice.json` and DOF linking. "Reform N" of a law is the SCJN reform table's
-chronological order. Linking a reform to its DOF `codNota` happens one layer up,
-in `nota2md`: a `codNota` is a DOF concept, and `scjn` imports no sibling
-package.
+re-derived) and an `actualizado` (`actualizado_scjn`). "Reform N" of a law is
+the SCJN reform table's chronological order. A `scjn-leyes` tarball holds the
+snapshots and `estado.json`, nothing else, and the release carries no link to
+the DOF: that linking lives outside this repository. A snapshot comes back as
+`archivo`, `fecha_publicacion` and `markdown`.

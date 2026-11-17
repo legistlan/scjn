@@ -14,16 +14,13 @@ human runs the publish step.
 2. **Seed.** `seed_federal_reglamentos.py --coleccion {reglamentos,lineamientos,tratados,estatutos}`
    turns a reviewed list into `estado.json` files, idempotently.
 3. **Crawl.** `fetch_scjn_legislacion.py` crawls (`--coleccion`, `--plan`, and for
-   `leyes` only `--actualiza`/`--solo-fecha`/`--dof-only`/`--reintenta`);
+   `leyes` only `--actualiza`/`--solo-fecha`/`--reintenta`);
    `recrawl_scjn_outline.py` re-crawls a whole corpus with the markers on;
    `rewrite_scjn_from_raw.py` rewrites Markdown from the kept raw answers without
    the network.
-4. **Link.** Linking new `leyes` reforms to their `codNota` is `nota2md`'s
-   `scripts/enlaza_scjn_legislacion.py`, in that repository. The id-keyed
-   collections have no DOF linking.
-5. **Verify.** `verify_scjn_outline.py`, then `measure_block_gaps.py` (see
+4. **Verify.** `verify_scjn_outline.py`, then `measure_block_gaps.py` (see
    [Outline](outline.qmd)).
-6. **Backfill the classification** (instruments crawled before the SCJN's whole
+5. **Backfill the classification** (instruments crawled before the SCJN's whole
    classification was recorded). `backfill_scjn_classification.py --coleccion
    {leyes,reglamentos,lineamientos,tratados,estatutos}` asks the SCJN's search once per
    instrument and merges `categoria_ordenamiento`, `ambito`, `pais`, `estado`,
@@ -35,11 +32,11 @@ human runs the publish step.
    `--dry-run` writes nothing. It talks to the network (about 2,900 instruments,
    roughly 30 to 60 minutes), so a human runs it, after the crawl and before
    packaging.
-7. **Package.** `empaqueta_scjn_leyes.py` and
+6. **Package.** `empaqueta_scjn_leyes.py` and
    `empaqueta_scjn_coleccion.py --coleccion ...` build the release: tarballs,
    `indice-global.json.gz`, `SHA256SUMS.txt`, `MANIFEST.md`, `partes.json` and
    `PUBLICAR.md`.
-8. **Publish.** A human reads `PUBLICAR.md` and publishes; only changed tarballs
+7. **Publish.** A human reads `PUBLICAR.md` and publishes; only changed tarballs
    need `--clobber`. No script uploads anything. See [Releases](releases.qmd).
 
 The commands a human runs to bring the classification into a published release:
@@ -57,7 +54,5 @@ gh release upload scjn-leyes indice-global.json.gz --repo legistlan/scjn --clobb
 audit of 13 November 2026) is crawled the same way as the other id-keyed collections, but
 it is **not published yet**: its discovery, crawl and publication are still a human's to run.
 
-The three scripts that link laws to the DOF (`discover_federal_laws.py`,
-`fetch_scjn_legislacion.py`, `recrawl_scjn_outline.py`) import `dofjson` and
-`nota2md` from PyPI, never the package: `uv sync --group scripts` or
-`pip install dofjson nota2md` (see [Install](install.qmd)).
+No script imports `dofjson` or `nota2md` (see [Install](install.qmd)): the
+repository and its releases hold SCJN data only.

@@ -17,10 +17,11 @@ of the five SCJN releases: `scjn-leyes`, `scjn-reglamentos`,
 ::: {.callout-warning}
 ## The SCJN is not an official source of legal text
 
-The *Diario Oficial de la Federación* (DOF) is, and it is read through
-[dofjson](https://legistlan.github.io/dofjson/). `fuente: scjn` in a
+The *Diario Oficial de la Federación* (DOF) is. `fuente: scjn` in a
 provenance header means exactly that: the text is the SCJN's consolidated
-view, a convenience corpus and never a replacement for the gazette.
+view, a convenience corpus and never a replacement for the gazette. This
+site and its releases hold SCJN data only: nothing links a snapshot to the DOF
+note that published it, and that linking lives outside this repository.
 :::
 
 ::: {.fronts}

@@ -44,8 +44,11 @@ message, a comment or a docstring is an issue of the monorepo, where those issue
   `SinTextoEnSCJN` for an instrument with no text. Every reader reads only the cache and raises
   `AssetNotCached` rather than downloading; only `download_*_assets` and `scjn download` talk to
   the network.
-- Only `leyes` has an `abrev` and an `actualizado` (`actualizado_scjn`); the id-keyed collections
-  have none. An `abrev` is the release's slug and asset name, never re-derived. "Reform N" of a law
+- Only `leyes` has an `abrev` and an `actualizado`, the date of the newest reform the SCJN serves
+  for the law, never a DOF date: the packager publishes `actualizado_scjn` (what the crawl records)
+  or, when `estado.json` lacks it, the date of the law's newest snapshot
+  (`actualizado_publicado` in `scripts/empaqueta_scjn_leyes.py`; no `actualizado` for a law with no
+  snapshot); the id-keyed collections have none. An `abrev` is the release's slug and asset name, never re-derived. "Reform N" of a law
   is the SCJN reform table's chronological order.
 - **Old releases are still read.** The `scjn-leyes` release published before the DOF linking left
   this repository has a `codNota` section in its index and an `indice.json` and `notas/` in every

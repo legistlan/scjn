@@ -49,12 +49,15 @@ prefixed with `<slug>/`, so a tarball can be unpacked anywhere without
 stepping on anything:
 
     <slug>/<fecha>.md          the snapshots, with their provenance header
-    <slug>/estado.json         when it was crawled, and against which
-                               catalogue `actualizado` (issue #148)
+    <slug>/estado.json         when it was crawled, and the law's
+                               `actualizado` (issue #148)
 
 `estado.json` travels with them so the release itself carries its own
-freshness metadata: which `actualizado` the published snapshots correspond
-to is then readable from the asset, with nothing to trust in local scratch.
+freshness metadata, with nothing to trust in local scratch. Its `actualizado`
+is the date of the newest reform the SCJN serves for the law, never a DOF
+date: `actualizado_scjn` when the file has it, otherwise the date of the
+newest snapshot on disk, and no `actualizado` for a law with no snapshot
+(`actualizado_publicado`, review fix-3).
 
 Nothing else is shipped, whatever the corpus directory holds: a law crawled
 by an older version of this repository may still have an `indice.json` and a
@@ -156,6 +159,39 @@ COLECCION = "leyes"
 #: date of a law). `_miembros_instrumento` drops them from the copy of
 #: `estado.json` a tarball ships.
 CLAVES_ESTADO_DOF = ("enlazado", "actualizado_dof")
+
+
+def actualizado_publicado(directorio: Path, estado: dict) -> str | None:
+    """The `actualizado` a law is published with: the date of the newest reform
+    the SCJN serves for it, as `YYYY-MM-DD`, and never a DOF date (review
+    fix-3, found after the fact: the `actualizado` the older code persisted in
+    `estado.json` was the later of the SCJN's and the DOF's date, so shipping
+    it as it was put a DOF-derived value in the release).
+
+    It is `estado["actualizado_scjn"]` when `estado.json` has it; otherwise the
+    publication date of the newest snapshot in `directorio` (by date, then by
+    the `-N` repetition suffix: `scjn.header.versiones_de_directorio`'s order),
+    computed offline; `None` for a law with neither. Every published
+    `actualizado` of a law comes from this one function."""
+    if estado.get("actualizado_scjn"):
+        return estado["actualizado_scjn"]
+    versiones = versiones_de_directorio(directorio)
+    if not versiones:
+        return None
+    return datetime.strptime(versiones[-1].fecha_publicacion, "%d-%m-%Y").date().isoformat()
+
+
+def estado_publicado(directorio: Path) -> dict:
+    """A law's `estado.json` as it is published: the one on disk without the
+    keys of `CLAVES_ESTADO_DOF` and with `actualizado` set to
+    `actualizado_publicado` (no `actualizado` key at all when that is `None`).
+    Computed in memory; the corpus on disk is never rewritten."""
+    estado = lee_estado(directorio)
+    publicado = {k: v for k, v in estado.items() if k not in (*CLAVES_ESTADO_DOF, "actualizado")}
+    actualizado = actualizado_publicado(directorio, estado)
+    if actualizado:
+        publicado["actualizado"] = actualizado
+    return publicado
 
 
 def _load_catalog(outdir: Path) -> list[dict]:
@@ -273,7 +309,7 @@ def resume_coleccion(outdir: Path) -> tuple[list[ResumenInstrumento], list[str]]
             ResumenInstrumento(
                 slug=slug, nombre=entrada["nombre"],
                 total_snapshots=len(versiones),
-                estado=lee_estado(destino) or None,
+                estado=estado_publicado(destino) or None,
             )
         )
     return resumenes, nunca_rastreados
@@ -286,9 +322,10 @@ def _miembros_instrumento(directorio: Path) -> list[tuple[str, bytes]]:
     left by the DOF linking this repository no longer carries, and a hidden
     bookkeeping file (a `.progreso.json`-style checkpoint), are never shipped.
 
-    The shipped `estado.json` has no key of `CLAVES_ESTADO_DOF`. It is filtered
-    in memory, the corpus on disk is never rewritten; an `estado.json` with
-    none of those keys ships byte for byte as it is on disk."""
+    The shipped `estado.json` is `estado_publicado`: no key of
+    `CLAVES_ESTADO_DOF` and an SCJN-only `actualizado`. It is computed in
+    memory, the corpus on disk is never rewritten; an `estado.json` that
+    already is what would be published ships byte for byte as it is on disk."""
     miembros = []
     for ruta in sorted(directorio.glob("*.md")):
         if ruta.is_file() and not ruta.name.startswith("."):
@@ -296,11 +333,10 @@ def _miembros_instrumento(directorio: Path) -> list[tuple[str, bytes]]:
     ruta_estado = directorio / ARCHIVO_ESTADO
     if ruta_estado.is_file():
         datos = ruta_estado.read_bytes()
-        estado = lee_estado(directorio)
-        if any(clave in estado for clave in CLAVES_ESTADO_DOF):
-            filtrado = {k: v for k, v in estado.items() if k not in CLAVES_ESTADO_DOF}
+        publicado = estado_publicado(directorio)
+        if publicado != lee_estado(directorio):
             datos = (
-                json.dumps(filtrado, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+                json.dumps(publicado, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
             ).encode("utf-8")
         miembros.append((ARCHIVO_ESTADO, datos))
     return sorted(miembros)

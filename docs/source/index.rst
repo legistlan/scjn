@@ -200,7 +200,8 @@ True
 :py:func:`~scjn.release.download_scjn_leyes_catalog` reads the federal-law catalogue
 the release already publishes — the seed the Cámara de Diputados used to be
 scraped for (issue #184). ``freshness=False`` skips every law's own tarball
-(the default reads all ~315 of them for the ``actualizado`` freshness date)
+(the default reads all ~315 of them for the ``actualizado`` freshness date: the
+date of the newest reform the SCJN serves for the law, never a DOF date)
 and answers off the index alone:
 
 >>> catalogo = scjn.download_scjn_leyes_catalog(freshness=False)

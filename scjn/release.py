@@ -602,8 +602,10 @@ def download_scjn_leyes_catalog(*, freshness: bool = True, cache_dir=None, log=N
     (`scjn.catalog.slug_instrumento`); `abrev` and `actualizado` come from each
     law's own `estado.json` when `freshness=True` -- `abrev` verbatim (issue
     #210: `estado.json` is now the one place that value lives, once the
-    one-time backfill has run), `actualizado` the date its last reform
-    carried when it was crawled (issue #148).
+    one-time backfill has run), `actualizado` the date of the newest
+    reform the SCJN serves for the law, never a DOF date (the packager
+    publishes `actualizado_scjn`, or the date of the law's newest snapshot
+    when that is absent: issue #148, review fix-3).
 
     `materia`/`vigencia`/`resumen` (issue #215) are the SCJN's own subject
     classification, in-force status and one-paragraph abstract of the law —

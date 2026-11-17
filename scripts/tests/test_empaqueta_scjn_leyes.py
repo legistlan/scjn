@@ -104,8 +104,8 @@ class TestTarball(CorpusTemporal):
         self.assertTrue((self.ley / "indice.json").is_file())
         self.assertTrue((self.ley / "notas" / "nota-1.md").is_file())
 
-    def test_un_estado_sin_claves_dof_viaja_byte_por_byte(self):
-        limpio = json.dumps({"abrev": "lfca", "rastreado": "2026-09-01"})  # not even normalized
+    def test_un_estado_ya_publicable_viaja_byte_por_byte(self):
+        limpio = json.dumps({"abrev": "lfca", "actualizado": "2026-05-22"})  # not even normalized
         (self.ley / "estado.json").write_text(limpio)
 
         self.empaqueta()
@@ -125,6 +125,85 @@ class TestTarball(CorpusTemporal):
         [r] = resumenes
         self.assertEqual((r.slug, r.total_snapshots), ("lfca", 2))
         self.assertEqual(nunca, [])
+
+
+class TestActualizadoSoloSCJN(CorpusTemporal):
+    """Review fix-3: the `actualizado` a release carries is an SCJN date only."""
+
+    def estado_enviado(self, directorio="lfca"):
+        with tarfile.open(self.destino / f"{directorio}.tgz") as tar:
+            return json.loads(tar.extractfile(f"{directorio}/estado.json").read())
+
+    def test_con_actualizado_scjn_gana_sobre_la_fecha_mezclada_con_el_dof(self):
+        estado = {**ESTADO_VIEJO, "actualizado": "2026-06-30", "actualizado_scjn": "2026-05-22"}
+        (self.ley / "estado.json").write_text(json.dumps(estado))
+
+        self.empaqueta()
+
+        enviado = self.estado_enviado()
+        self.assertEqual(enviado["actualizado"], "2026-05-22")
+        self.assertEqual(enviado["actualizado_scjn"], "2026-05-22")
+        self.assertNotIn("actualizado_dof", enviado)
+        self.assertNotIn("enlazado", enviado)
+
+    def test_sin_actualizado_scjn_es_la_fecha_del_snapshot_mas_nuevo(self):
+        for ruta in self.ley.glob("*.md"):
+            ruta.unlink()
+        for nombre, fecha in [
+            ("05-02-1917.md", "05-02-1917"), ("01-04-2025.md", "01-04-2025"),
+            ("01-04-2025-2.md", "01-04-2025"), ("22-05-2024.md", "22-05-2024"),
+        ]:
+            (self.ley / nombre).write_text(CABECERA.format(fecha=fecha) + "X\n")
+        estado = {k: v for k, v in ESTADO_VIEJO.items() if k != "actualizado_scjn"}
+        estado["actualizado"] = "2026-06-30"  # the old code's DOF-later value
+        (self.ley / "estado.json").write_text(json.dumps(estado))
+
+        self.empaqueta()
+
+        enviado = self.estado_enviado()
+        self.assertEqual(enviado["actualizado"], "2025-04-01")
+        self.assertNotIn("actualizado_scjn", enviado)
+        self.assertNotIn("actualizado_dof", enviado)
+
+    def test_una_ley_sin_snapshots_no_lleva_actualizado(self):
+        directorio = self.outdir / "leyes" / "vacia"
+        directorio.mkdir()
+        (directorio / "estado.json").write_text(json.dumps(
+            {"nombre": "LEY VACIA", "actualizado": "2026-06-30", "actualizado_dof": "2026-06-30"}
+        ))
+
+        self.assertEqual(emp.estado_publicado(directorio), {"nombre": "LEY VACIA"})
+        self.assertIsNone(emp.actualizado_publicado(directorio, emp.lee_estado(directorio)))
+        resumenes, nunca = emp.resume_coleccion(self.outdir)
+        self.assertEqual([r.slug for r in resumenes], ["lfca"])
+        self.assertEqual(nunca, ["LEY VACIA"])
+        self.assertEqual(
+            emp._miembros_instrumento(directorio),
+            [("estado.json", b'{\n  "nombre": "LEY VACIA"\n}\n')],
+        )
+
+    def test_el_resumen_usa_el_mismo_valor(self):
+        estado = {**ESTADO_VIEJO, "actualizado": "2026-06-30"}
+        (self.ley / "estado.json").write_text(json.dumps(estado))
+
+        [r] = self.empaqueta()[0]
+
+        self.assertEqual(r.estado["actualizado"], "2026-05-22")
+
+    def test_el_catalogo_del_release_devuelve_ese_actualizado(self):
+        estado = {k: v for k, v in ESTADO_VIEJO.items() if k != "actualizado_scjn"}
+        estado["actualizado"] = "2026-06-30"
+        (self.ley / "estado.json").write_text(json.dumps(estado))
+        self.empaqueta()
+        cache = self.tmp / "cache"
+        (cache / "scjn-leyes").mkdir(parents=True)
+        for asset in self.destino.iterdir():
+            (cache / "scjn-leyes" / asset.name).write_bytes(asset.read_bytes())
+
+        catalogo = release.download_scjn_leyes_catalog(freshness=True, cache_dir=cache)
+
+        [entrada] = catalogo
+        self.assertEqual(entrada["actualizado"], "2026-05-22")
 
 
 class TestIndiceGlobal(CorpusTemporal):

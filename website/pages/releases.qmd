@@ -13,7 +13,10 @@ GitHub releases, four of them published today.
 | `scjn-tratados` | international treaties | `id_ordenamiento` |
 | `scjn-estatutos` | federal *estatutos* (the SCJN's category `ESTATUTO`); **not published yet** | `id_ordenamiento` |
 
-Each release carries an index plus one tarball per instrument. An instrument
+Each release carries an index plus one tarball per instrument. In `scjn-leyes`
+each tarball's `estado.json` has the law's `actualizado`, the date of the newest
+reform the SCJN serves for it (`actualizado_scjn`, or the date of the law's
+newest snapshot when that is absent), never a DOF date. An instrument
 with no consolidated text is indexed with `snapshots: 0` and has no tarball;
 reading it raises `SinTextoEnSCJN`.
 

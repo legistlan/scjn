@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Package the SCJN-based `leyes` corpus (snapshots + codNota links + the DOF
-notes each link was decided against, issue #123/#128) into one
-byte-reproducible tarball *per instrument*, plus a human-readable manifest
-and a checksum file.
+"""Package the SCJN-based `leyes` corpus (the reform-dated snapshots and each
+law's `estado.json`, issue #123/#128) into one byte-reproducible tarball *per
+instrument*, plus a human-readable manifest and a checksum file. SCJN data
+only: nothing about the DOF travels in a release.
 
 ## Manual publish only — never automated
 
@@ -22,7 +22,7 @@ should ever call it and then publish on its own.
     # `--repo` is the releases' owner, `scjn.release.release_repository()`:
     # this repository (legistlan/scjn) unless SCJN_RELEASE_REPOSITORY names a mirror.
     # first publish — the release itself, with the small text assets and the
-    # reverse index (issue #117) every reader resolves a codNota against:
+    # index every reader resolves a law's name and classification against:
     cd scripts/scjn/leyes-release
     gh release create scjn-leyes MANIFEST.md SHA256SUMS.txt indice-global.json.gz \\
         --repo legistlan/scjn --title "SCJN — leyes" --notes-file MANIFEST.md
@@ -35,8 +35,8 @@ should ever call it and then publish on its own.
         --repo legistlan/scjn --clobber
 
     # a later run only has to re-upload the laws that changed -- but always
-    # the reverse index with them: it is the union of every indice.json, so
-    # any change to any law makes the published one stale.
+    # the index with them: it lists every law, so any change to any law
+    # makes the published one stale.
     gh release upload scjn-leyes lft.tgz indice-global.json.gz \\
         SHA256SUMS.txt MANIFEST.md --repo legistlan/scjn --clobber
 
@@ -49,14 +49,20 @@ prefixed with `<slug>/`, so a tarball can be unpacked anywhere without
 stepping on anything:
 
     <slug>/<fecha>.md          the snapshots, with their provenance header
-    <slug>/indice.json         the codNota link + #115/#126/#127's signals
-    <slug>/estado.json         when it was crawled/linked, and against which
+    <slug>/estado.json         when it was crawled, and against which
                                catalogue `actualizado` (issue #148)
-    <slug>/notas/nota-<cod>.md the DOF text of every candidate considered
 
 `estado.json` travels with them so the release itself carries its own
 freshness metadata: which `actualizado` the published snapshots correspond
 to is then readable from the asset, with nothing to trust in local scratch.
+
+Nothing else is shipped, whatever the corpus directory holds: a law crawled
+by an older version of this repository may still have an `indice.json` and a
+`notas/` folder next to its snapshots (the DOF linking that used to live
+here), and its `estado.json` may carry the keys that linking wrote
+(`CLAVES_ESTADO_DOF`: `enlazado`, `actualizado_dof`). None of those reach a
+tarball: the packager filters the copy it ships and never rewrites the corpus
+on disk.
 
 ## Updating one law (issue #148)
 
@@ -65,12 +71,11 @@ tarballs and leaves every other `.tgz` already in `--destino` exactly as it
 is — the manifest says which ones were actually rewritten, so the human
 review before publishing is a handful of rows instead of 315. The manifest,
 `SHA256SUMS.txt` and `indice-global.json.gz` are always recomputed over the
-whole corpus, though: the reverse index is the union of every `indice.json`,
-so one law changing makes the published one stale.
+whole corpus, though: the index lists every law, so one law changing makes
+the published one stale.
 
     ./scripts/fetch_scjn_legislacion.py --outdir scripts/scjn --plan
     ./scripts/fetch_scjn_legislacion.py --outdir scripts/scjn --instrumento lft
-    ./scripts/enlaza_scjn_legislacion.py --outdir scripts/scjn --instrumento lft
     ./scripts/empaqueta_scjn_leyes.py --instrumento lft
     less scripts/scjn/leyes-release/MANIFEST.md   # short now. still read it all.
 
@@ -80,21 +85,13 @@ already-published snapshot by naming it here too, once a law flagged by
 `scripts/find_scjn_table_instruments.py` has had all of its snapshots
 re-downloaded (`fetch_scjn_legislacion.py --instrumento <slug>`, after
 deleting its `*.md` files — never `--reintenta <slug>`, which deletes
-`estado.json`/`indice.json` and re-searches without the recorded
+`estado.json` and re-searches without the recorded
 `id_ordenamiento`, issue #115's wrong-document path); packaging never
 re-derives a snapshot from anything cached locally, so skipping the
 re-download step would keep publishing the old one. `--instrumento` repeated
 over whichever laws were actually re-downloaded packages exactly those; the
 manifest names them for review the same way it does for `--instrumento lft`
 above.
-
-The DOF notes travel *with* the snapshots on purpose: `notas/` is the text
-each link was decided against (#126/#127), so shipping both makes the link
-auditable without going back to the network.
-
-An instrument crawled but not yet linked is still packaged (its raw
-snapshots, no `indice.json`) rather than held back; the manifest calls that
-out explicitly instead of hiding it.
 
 Needs at least one law already seeded under ``<outdir>/leyes/`` -- `leyes`
 is a literal path segment here (issue #189: it is the only collection
@@ -117,9 +114,9 @@ It runs once, its output is reviewed, and the corpus is republished by hand
 
 It only ever *adds* fields (`scjn.state.escribe_estado`'s merge, never an
 overwrite) to a directory that already exists under ``<outdir>/leyes/`` --
-`actualizado`/`actualizado_scjn`/`actualizado_dof`/`rastreado`/`enlazado`/
-`id_ordenamiento`, whatever a law's `estado.json` already has, are left
-exactly as they are. It never crawls, links or packages anything, and exits
+`actualizado`/`actualizado_scjn`/`rastreado`/`id_ordenamiento`, whatever a
+law's `estado.json` already has, are left exactly as they are. It never
+crawls or packages anything, and exits
 without writing a tarball -- run it, review the diff under `<outdir>/leyes/`,
 then run the normal packaging above.
 """
@@ -149,9 +146,16 @@ from scjn.release import (  # noqa: E402
 )
 from scjn.catalog import slug_instrumento  # noqa: E402
 from scjn.header import versiones_de_directorio  # noqa: E402
-from scjn.state import escribe_estado, lee_estado  # noqa: E402
+from scjn.state import ARCHIVO_ESTADO, escribe_estado, lee_estado  # noqa: E402
 
 COLECCION = "leyes"
+
+#: The keys of an `estado.json` that only the DOF linking wrote -- linking
+#: this repository no longer holds (review fix-2, found after the fact):
+#: `enlazado` (when a law was linked) and `actualizado_dof` (the newest DOF
+#: date of a law). `_miembros_instrumento` drops them from the copy of
+#: `estado.json` a tarball ships.
+CLAVES_ESTADO_DOF = ("enlazado", "actualizado_dof")
 
 
 def _load_catalog(outdir: Path) -> list[dict]:
@@ -200,8 +204,8 @@ def backfill_estado(outdir: Path, catalogo_anterior: list[dict], *, log=print) -
     directory is `lif-2026`, not the historical `abrev` itself), and only
     ever adds fields (`scjn.state.escribe_estado`'s merge) -- an already
     backfilled or freshly crawled `estado.json` keeps whatever it has for
-    `actualizado`/`actualizado_scjn`/`actualizado_dof`/`rastreado`/
-    `enlazado`/`id_ordenamiento` untouched.
+    `actualizado`/`actualizado_scjn`/`rastreado`/`id_ordenamiento`
+    untouched.
 
     A directory under ``<outdir>/leyes/`` with no matching entry in
     `catalogo_anterior` is reported and skipped, not guessed at: it means
@@ -230,31 +234,17 @@ def backfill_estado(outdir: Path, catalogo_anterior: list[dict], *, log=print) -
 
 @dataclass
 class ResumenInstrumento:
-    """One instrument's own row in the manifest: how much of it is
-    actually linked to a codNota (`porcentaje_enlazado`, `total_snapshots`,
-    `confirmados_por_contenido` — issue #127's count of links given extra
-    certainty by content diff). `porcentaje_enlazado` is None when the
-    instrument was crawled (Fase 1) but never linked (Fase 2 pendiente, no
-    `indice.json` yet) — a fact the manifest calls out, not hides.
-
-    `asset`/`bytes_comprimidos` are filled in by `empaqueta` once the
-    instrument's own tarball exists; `notas_dof` is how many DOF notes
-    (`notas/nota-<cod>.md`) travelled inside it. `indice` is the instrument's
-    own `indice.json`, already parsed — kept on the summary so
-    `escribe_indice_global` builds the reverse index off the same read this
-    one did, rather than walking every instrument's directory a second time."""
+    """One instrument's own row in the manifest: its name, how many
+    snapshots it has (`total_snapshots`) and, once `empaqueta` wrote its
+    tarball, the `asset` and its `bytes_comprimidos`."""
 
     slug: str
     nombre: str
     total_snapshots: int
-    porcentaje_enlazado: float | None
-    confirmados_por_contenido: int
-    notas_dof: int = 0
     asset: str | None = None
     bytes_comprimidos: int = 0
-    indice: list[dict] | None = None
     #: This instrument's own `estado.json` (issue #148) — when it was last
-    #: crawled and linked, and against which catalogue `actualizado`. Shown
+    #: crawled, and against which catalogue `actualizado`. Shown
     #: in the manifest so the human reviewing an incremental update can see
     #: at a glance which laws the run actually refreshed.
     estado: dict | None = None
@@ -267,7 +257,7 @@ def resume_coleccion(outdir: Path) -> tuple[list[ResumenInstrumento], list[str]]
     """Every `leyes` instrument in the catalogue, summarized for
     the manifest, plus the catalogue names of the ones never crawled at all
     (issue #124's Fase 1 pendiente) — returned separately, since a
-    never-crawled instrument has nothing on disk to classify or link."""
+    never-crawled instrument has nothing on disk to package."""
     instrumentos = _load_catalog(outdir)
     resumenes = []
     nunca_rastreados = []
@@ -279,44 +269,41 @@ def resume_coleccion(outdir: Path) -> tuple[list[ResumenInstrumento], list[str]]
             nunca_rastreados.append(entrada["nombre"])
             continue
 
-        porcentaje = None
-        confirmados = 0
-        indice = None
-        indice_path = destino / "indice.json"
-        if indice_path.is_file():
-            indice = json.loads(indice_path.read_text(encoding="utf-8"))
-            total = len(indice)
-            enlazados = sum(1 for e in indice if e.get("codNota") is not None)
-            porcentaje = (enlazados / total) if total else 0.0
-            confirmados = sum(
-                1 for e in indice if e.get("content_diff_confirmed_codNota") is not None
-            )
-
         resumenes.append(
             ResumenInstrumento(
                 slug=slug, nombre=entrada["nombre"],
-                total_snapshots=len(versiones), porcentaje_enlazado=porcentaje,
-                confirmados_por_contenido=confirmados,
-                notas_dof=len(list((destino / "notas").glob("nota-*.md")))
-                if (destino / "notas").is_dir() else 0,
-                indice=indice,
+                total_snapshots=len(versiones),
                 estado=lee_estado(destino) or None,
             )
         )
     return resumenes, nunca_rastreados
 
 
-def _archivos_instrumento(directorio: Path) -> list[Path]:
-    """Every file worth shipping for one instrument: its snapshot `.md`
-    files, its `indice.json` (when `enlaza_scjn_legislacion.py` has already
-    run for it) and its own `notas/nota-<cod>.md` — the DOF text each link
-    was decided against, which stopped being scratch the moment the link
-    became something to audit (issue #128). A hidden bookkeeping file (a
-    `.progreso.json`-style checkpoint) is never shipped."""
-    return sorted(
-        p for p in directorio.glob("**/*")
-        if p.is_file() and not any(parte.startswith(".") for parte in p.relative_to(directorio).parts)
-    )
+def _miembros_instrumento(directorio: Path) -> list[tuple[str, bytes]]:
+    """Every member worth shipping for one instrument, as ``(name, bytes)``
+    sorted by name: its snapshot `.md` files and its `estado.json` -- nothing
+    else, whatever the directory holds. An `indice.json` or a `notas/` folder
+    left by the DOF linking this repository no longer carries, and a hidden
+    bookkeeping file (a `.progreso.json`-style checkpoint), are never shipped.
+
+    The shipped `estado.json` has no key of `CLAVES_ESTADO_DOF`. It is filtered
+    in memory, the corpus on disk is never rewritten; an `estado.json` with
+    none of those keys ships byte for byte as it is on disk."""
+    miembros = []
+    for ruta in sorted(directorio.glob("*.md")):
+        if ruta.is_file() and not ruta.name.startswith("."):
+            miembros.append((ruta.name, ruta.read_bytes()))
+    ruta_estado = directorio / ARCHIVO_ESTADO
+    if ruta_estado.is_file():
+        datos = ruta_estado.read_bytes()
+        estado = lee_estado(directorio)
+        if any(clave in estado for clave in CLAVES_ESTADO_DOF):
+            filtrado = {k: v for k, v in estado.items() if k not in CLAVES_ESTADO_DOF}
+            datos = (
+                json.dumps(filtrado, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+            ).encode("utf-8")
+        miembros.append((ARCHIVO_ESTADO, datos))
+    return sorted(miembros)
 
 
 def empaqueta(
@@ -358,9 +345,7 @@ def empaqueta(
         with open(salida, "wb") as bruto, \
                 gzip.GzipFile(filename="", mode="wb", fileobj=bruto, mtime=0) as gz, \
                 tarfile.open(fileobj=gz, mode="w") as tar:
-            for archivo in _archivos_instrumento(directorio):
-                datos = archivo.read_bytes()
-                relativo = archivo.relative_to(directorio).as_posix()
+            for relativo, datos in _miembros_instrumento(directorio):
                 info = tarfile.TarInfo(f"{resumen.slug}/{relativo}")
                 info.size = len(datos)
                 info.mtime = 0
@@ -374,25 +359,26 @@ def empaqueta(
 
 def escribe_indice_global(
     destino: Path, resumenes: list[ResumenInstrumento], generado: str
-) -> dict:
-    """Write `indice-global.json.gz` next to the tarballs and return the tally
-    of what went in — the reverse index `codNota -> instrumento` a consumer
-    needs to answer "which law does this decree reform" without downloading
-    380 MB of corpus (issue #117, Paso 1).
+) -> int:
+    """Write `indice-global.json.gz` next to the tarballs and return its size
+    in bytes — the index a consumer needs to list the laws, their names and
+    their classification without downloading 380 MB of corpus (issue #117,
+    Paso 1). It has no `codNota` section: nothing about the DOF is published.
 
-    Written like every other asset here: gzip stamped with mtime 0, keys in
-    sorted order (`construye_indice_global` sorts by slug and, numerically, by
-    codNota), so an unchanged corpus re-packages to the same bytes except for
-    its own `generado` stamp — the same caveat `MANIFEST.md` already carries,
-    and the reason the tarballs are the byte-identical ones.
+    Written like every other asset here: gzip stamped with mtime 0, laws in
+    slug order (`construye_indice_global` sorts them), so an unchanged corpus
+    re-packages to the same bytes except for its own `generado` stamp — the
+    same caveat `MANIFEST.md` already carries, and the reason the tarballs
+    are the byte-identical ones.
 
     Like the tarballs, this asset is **published by hand**: it has to be
-    re-uploaded whenever the corpus changes, or a reader will resolve codigos
-    against a corpus that no longer matches — the same manual step issue #148
-    has to respect when it starts updating law by law.
+    re-uploaded whenever the corpus changes, or a reader will list a corpus
+    that no longer matches — the same manual step issue #148 has to respect
+    when it starts updating law by law.
 
-    Each law's `materia`/`vigencia`/`resumen` (issue #215) travel in from its
-    own `estado.json`, falling back to whatever the *published* index already
+    Each law's classification (`CAMPOS_CLASIFICACION`) and
+    `materia`/`vigencia`/`resumen` (issue #215) travel in from its own
+    `estado.json`, falling back to whatever the *published* index already
     says for it — the same fallback `_load_catalog` uses for `nombre`, and for
     the same reason: `scripts/fetch_federal_law_metadata.py` writes the fields
     into a corpus and patches the published asset directly, so a workspace
@@ -404,14 +390,13 @@ def escribe_indice_global(
     except AssetNotCached:
         publicados = {}
 
-    indice, conteos = construye_indice_global(
+    indice = construye_indice_global(
         [
             {
                 "slug": r.slug,
                 "nombre": r.nombre,
                 "asset": r.asset or f"{r.slug}.tgz",
                 "snapshots": r.total_snapshots,
-                "indice": r.indice,
                 **{
                     campo: (r.estado or {}).get(campo)
                     or publicados.get(r.slug, {}).get(campo)
@@ -427,8 +412,7 @@ def escribe_indice_global(
     with open(salida, "wb") as bruto, \
             gzip.GzipFile(filename="", mode="wb", fileobj=bruto, mtime=0) as gz:
         gz.write(crudo)
-    conteos["bytes_comprimidos"] = salida.stat().st_size
-    return conteos
+    return salida.stat().st_size
 
 
 def sha256(ruta: Path) -> str:
@@ -446,7 +430,7 @@ def _tamano(bytes_: int) -> str:
 def _formatea_manifiesto(
     resumenes: list[ResumenInstrumento],
     nunca_rastreados: list[str],
-    conteos_indice: dict | None = None,
+    bytes_indice: int | None = None,
 ) -> str:
     ordenados = sorted(resumenes, key=lambda r: r.nombre)
     total_catalogo = len(resumenes) + len(nunca_rastreados)
@@ -467,19 +451,12 @@ def _formatea_manifiesto(
         lineas.extend(f"- {nombre}" for nombre in sorted(nunca_rastreados))
         lineas.append("")
 
-    sin_enlazar = [r for r in ordenados if r.porcentaje_enlazado is None]
-    if sin_enlazar:
-        lineas.append(f"## Rastreados pero nunca enlazados — Fase 2 pendiente ({len(sin_enlazar)})")
-        lineas.append("")
-        lineas.extend(f"- {r.nombre} (`{r.slug}`)" for r in sin_enlazar)
-        lineas.append("")
-
     # La clasificación de confianza de #115 (ratio/motivo) ya no aparece
     # aquí: los títulos se revisaron y corrigieron a mano, así que ordenar
     # por sospecha dejó de decir nada — la tabla va por nombre.
     # Issue #148: on an incremental run only a handful of laws were actually
     # rewritten, and those are the only rows a human has to read closely
-    # (¿la SCJN devolvió el documento correcto?, ¿bajó el % de enlace?).
+    # (¿la SCJN devolvió el documento correcto?).
     # They get their own section above the full table, which stays complete
     # because the checksums and the reverse index still cover everything.
     reempaquetados = [r for r in ordenados if r.reempaquetado]
@@ -502,44 +479,26 @@ def _formatea_manifiesto(
 
     lineas.append("## Instrumentos empaquetados")
     lineas.append("")
-    lineas.append(
-        "| instrumento | slug | snapshots | % enlazado | "
-        "confirmados por contenido (#127) | asset | tamaño | notas DOF | rastreado |"
-    )
-    lineas.append("|---|---|---|---|---|---|---|---|---|")
+    lineas.append("| instrumento | slug | snapshots | asset | tamaño | rastreado |")
+    lineas.append("|---|---|---|---|---|---|")
     for r in ordenados:
-        porcentaje = f"{r.porcentaje_enlazado:.0%}" if r.porcentaje_enlazado is not None else "—"
         lineas.append(
             f"| {r.nombre} | `{r.slug}` | {r.total_snapshots} "
-            f"| {porcentaje} | {r.confirmados_por_contenido} "
-            f"| `{r.asset}` | {_tamano(r.bytes_comprimidos)} | {r.notas_dof} "
+            f"| `{r.asset}` | {_tamano(r.bytes_comprimidos)} "
             f"| {(r.estado or {}).get('rastreado', '—')} |"
         )
     lineas.append("")
 
-    if conteos_indice is not None:
-        # Lo que el índice inverso sí sabe, y lo que dejó fuera y por qué: una
-        # entrada sin `codNota` de certeza no entra (issue #117, D2), así que
-        # el total de aquí es siempre menor que el de snapshots empaquetados.
-        fuera = {
-            clave: valor for clave, valor in conteos_indice.items()
-            if clave not in ("linked", "bytes_comprimidos")
-        }
-        lineas.append(f"## Índice inverso — `{ASSET_INDICE_GLOBAL}` (#117)")
+    if bytes_indice is not None:
+        lineas.append(f"## Índice — `{ASSET_INDICE_GLOBAL}`")
         lineas.append("")
         lineas.append(
-            f"{conteos_indice['linked']} snapshot(s) con `codNota` de certeza en el "
-            f"índice; {_tamano(conteos_indice['bytes_comprimidos'])} comprimido."
+            f"{len(resumenes)} instrumento(s) en el índice; {_tamano(bytes_indice)} comprimido."
         )
         lineas.append("")
-        lineas.append("Fuera del índice, por motivo:")
-        lineas.append("")
-        lineas.extend(f"- `{clave}`: {valor}" for clave, valor in sorted(fuera.items()))
-        lineas.append("")
         lineas.append(
-            f"Este asset se sube a mano igual que los tarballs — y hay que volver a "
-            f"subirlo cada vez que el corpus cambie, o `snapshot_de_codNota` "
-            f"resolverá contra un corpus que ya no corresponde."
+            "Este asset se sube a mano igual que los tarballs — y hay que volver a "
+            "subirlo cada vez que el corpus cambie, o listará un corpus que ya no corresponde."
         )
         lineas.append("")
 
@@ -555,25 +514,25 @@ def main(argv=None) -> int:
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     # Los defaults son los directorios que el corpus usa hoy: `scripts/scjn`
-    # es donde fetch/enlaza ya escribieron `leyes/`, y el destino cuelga de
+    # es donde fetch ya escribio `leyes/`, y el destino cuelga de
     # ahi mismo — ambos bajo el `scripts/scjn/` que .gitignore excluye, para
     # que ninguna corrida deje datos rastreables por git.
     p.add_argument(
         "--outdir", type=Path, default=Path("scripts/scjn"),
-        help="donde fetch_scjn_legislacion.py / enlaza_scjn_legislacion.py ya escribieron 'leyes'",
+        help="donde fetch_scjn_legislacion.py ya escribio 'leyes'",
     )
     p.add_argument("--destino", type=Path, default=Path("scripts/scjn/leyes-release"))
     p.add_argument(
         "--sin-indice-global", action="store_true",
-        help=f"no escribir {ASSET_INDICE_GLOBAL} (el índice inverso "
-        "codNota -> instrumento, issue #117); por default se genera",
+        help=f"no escribir {ASSET_INDICE_GLOBAL} (el índice de "
+        "instrumentos, issue #117); por default se genera",
     )
     p.add_argument(
         "--instrumento", action="append", metavar="SLUG",
         help=(
             "repetible; reescribe solo el .tgz de estos instrumentos (issue #148). El "
             f"manifiesto, SHA256SUMS.txt y {ASSET_INDICE_GLOBAL} se recalculan siempre "
-            "completos: el indice inverso es la union de todos los indice.json, asi que "
+            "completos: el indice lista todas las leyes, asi que "
             "cualquier cambio en una ley deja obsoleto el publicado"
         ),
     )
@@ -607,13 +566,13 @@ def main(argv=None) -> int:
             )
     empaqueta(args.outdir, args.destino, resumenes, solo=solo)
 
-    conteos_indice = None
+    bytes_indice = None
     if not args.sin_indice_global:
-        conteos_indice = escribe_indice_global(args.destino, resumenes, generado)
+        bytes_indice = escribe_indice_global(args.destino, resumenes, generado)
 
     manifiesto = args.destino / "MANIFEST.md"
     manifiesto.write_text(
-        _formatea_manifiesto(resumenes, nunca_rastreados, conteos_indice),
+        _formatea_manifiesto(resumenes, nunca_rastreados, bytes_indice),
         encoding="utf-8",
     )
 
@@ -626,7 +585,7 @@ def main(argv=None) -> int:
         )
         + (
             f"{sha256(args.destino / ASSET_INDICE_GLOBAL)}  {ASSET_INDICE_GLOBAL}\n"
-            if conteos_indice is not None else ""
+            if bytes_indice is not None else ""
         ),
         encoding="utf-8",
     )
@@ -644,10 +603,9 @@ def main(argv=None) -> int:
         f"{len(nunca_rastreados)} instrumento(s) sin rastrear (sin asset)",
         file=sys.stderr,
     )
-    if conteos_indice is not None:
+    if bytes_indice is not None:
         print(
-            f"{ASSET_INDICE_GLOBAL}: {conteos_indice['linked']} codNota con certeza, "
-            f"{_tamano(conteos_indice['bytes_comprimidos'])}",
+            f"{ASSET_INDICE_GLOBAL}: {len(resumenes)} instrumento(s), {_tamano(bytes_indice)}",
             file=sys.stderr,
         )
     print(

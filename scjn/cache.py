@@ -94,8 +94,7 @@ class Coleccion:
     Deliberately **not** the four-collection registry issue #189 deleted:
     this carries only what every id-keyed collection's shared path actually
     needs (a name and where its assets live), never a per-collection
-    behaviour flag. `leyes` has its own `abrev`/`actualizado`/`indice.json`/
-    `notas/`/codNota-reverse-index path and is not, and will not be,
+    behaviour flag. `leyes` has its own `abrev`/`actualizado` path and is not, and will not be,
     described by this class -- growing it to cover `leyes` too is the sign
     this abstraction went too far. That includes *how membership is decided*:
     `reglamentos`/`lineamientos`/`estatutos` are members by the SCJN's own category,

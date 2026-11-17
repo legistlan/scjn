@@ -3,9 +3,8 @@
 issue #222; `tratados`, issue #277; `estatutos`, issue #9) into one byte-reproducible tarball *per instrument with text*,
 plus a human-readable manifest and a checksum file. Shared by the three
 id-keyed collections (generalized out of the `reglamentos`-only
-`empaqueta_scjn_reglamentos.py` in issue #222's Fase 0), without
-`indice.json`/`notas/` or a `codNota` section: none of them has DOF linking,
-so every ``<id_ordenamiento>.tgz`` ships only ``<id_ordenamiento>/<fecha>.md``
+`empaqueta_scjn_reglamentos.py` in issue #222's Fase 0). Every
+``<id_ordenamiento>.tgz`` ships only ``<id_ordenamiento>/<fecha>.md``
 and ``<id_ordenamiento>/estado.json``.
 
 ## Manual publish only — never automated
@@ -41,9 +40,8 @@ sequence lives.
 
 No `abrev` (no id-keyed collection has one, issue #220's own decision 3: the
 SCJN reissues an instrument as a brand-new `idOrdenamiento` rather than as a
-reform of the previous one, so a title-derived key would collide), no
-`indice.json`, no `notas/` -- nothing here depends on a DOF link that does
-not exist for any of them.
+reform of the previous one, so a title-derived key would collide), nothing
+here carries anything but SCJN data.
 
 ## An instrument with no consolidated text ships no tarball (decision 6)
 
@@ -305,8 +303,7 @@ def _advierte_si_falta_partes_json(destino: Path, partes_originales: list[dict],
 
 def _archivos_instrumento(directorio: Path) -> list[Path]:
     """Every file worth shipping for one instrument: its snapshot `.md`
-    files and its own `estado.json` -- no `indice.json`/`notas/` here at
-    all (neither collection has DOF linking, issue #220's own Scope). A
+    files and its own `estado.json`. A
     hidden bookkeeping file (a `.progreso.json`-style checkpoint) is never
     shipped."""
     return sorted(
@@ -363,8 +360,8 @@ def escribe_indice_global(
     destino: Path, coleccion: str, resumenes: list[ResumenInstrumento], generado: str
 ) -> None:
     """Write `indice-global.json.gz` -- the shared sibling of
-    `empaqueta_scjn_leyes.escribe_indice_global`, with no `codNota` section
-    and no published-index fallback (this release does not exist until
+    `empaqueta_scjn_leyes.escribe_indice_global`, with no
+    published-index fallback (this release does not exist until
     this run publishes it, unlike `scjn-leyes` which a metadata backfill
     can patch after the fact).
 
@@ -591,10 +588,6 @@ def _formatea_manifiesto(coleccion: str, resumenes: list[ResumenInstrumento],
         "",
         f"{total_catalogo} instrumento(s) en el catálogo (`{coleccion}`); "
         f"{len(resumenes)} ya rastreado(s) por la SCJN.",
-        "",
-        "Sin enlace a DOF (issue #220, Scope): no hay `indice.json` por instrumento "
-        "ni sección `codNota` en el índice global -- el enlace se implementa en un "
-        f"issue futuro, para {coleccion} y leyes por igual.",
         "",
     ]
     lineas.extend(_seccion_partes_manifiesto(partes or []))

@@ -30,14 +30,6 @@ class TestSearchName(unittest.TestCase):
         self.assertEqual(catalog.search_name(entrada), "LEY de Amparo")
 
 
-class TestIsoDateFromNote(unittest.TestCase):
-    def test_convierte_fecha_dd_mm_yyyy_a_iso(self):
-        self.assertEqual(catalog.iso_date_from_note({"fecha": "24-05-2026"}), "2026-05-24")
-
-    def test_regresa_none_sin_fecha(self):
-        self.assertIsNone(catalog.iso_date_from_note({}))
-
-
 class TestInstrumentoUpToDate(unittest.TestCase):
     def test_no_salta_sin_fecha_de_corpus(self):
         with tempfile.TemporaryDirectory() as tmp:

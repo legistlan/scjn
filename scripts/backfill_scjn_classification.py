@@ -87,7 +87,7 @@ CAMPOS_DE_ESTADO = {
 
 #: The `estado.json` key that marks "the SCJN's search was asked for this
 #: instrument and answered for it": today's date. Spanish like the other
-#: bookkeeping keys of the file (`rastreado`, `clasificado`, `enlazado`). Not
+#: bookkeeping keys of the file (`rastreado`, `clasificado`). Not
 #: `ambito`: the crawl and the seed write that one too.
 STAMP_KEY = "clasificacion_consultada"
 

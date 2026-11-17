@@ -2,8 +2,7 @@
 
 An integration test, not a unit test: it talks to
 `legislacion.scjn.gob.mx`, so it is excluded from this package's own
-routine run the same way `nota2md`'s `test_scjn_release_red.py` and
-`test_leyes_44.py` are excluded from theirs:
+routine run:
 
     pytest tests -q --ignore=tests/test_api_red.py
 

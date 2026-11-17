@@ -5,20 +5,20 @@ have yet, and stop -- the one part of the retired `extract_scjn_titles.py
 
     ./scripts/discover_federal_laws.py
 
-Needs the release's own reverse index already on disk (`scjn download`, or
-any prior `nota2md`/`scjn` command that populated it) plus network to the
-SCJN (the faceted search) and the `notas-archivo` cache for the DOF
-confirmation.
+Needs the release's own index already on disk (`scjn download`) plus network
+to the SCJN (the faceted search, and one `Reforma` request per candidate).
+It works from the SCJN alone.
 
 `BusquedaFrase` has no "list everything" mode -- an empty `q` answers zero
 results -- so this pages a phrase search per category of the `leyes` group
 instead, using the category's own word as the phrase. Every federal
 LEY/CÓDIGO/CONSTITUCIÓN has that word in its title by construction, and the
 SCJN's own `CODIGO` category alone would otherwise contribute ~180 "CÓDIGO
-DE CONDUCTA DE ..." administrative documents that are not laws -- which is
-why every candidate is confirmed against the DOF the same way an existing
-law's own `actualizado_dof` is (a same-day title that names it and opens
-with DECRETO/LEY) before being reported.
+DE CONDUCTA DE ..." administrative documents that are not laws. A candidate
+is therefore reported only when the SCJN itself serves a reform table for it
+with consolidated text (`tieneArticulos`), and its `actualizado` is the
+newest `fecha_publicacion` of that table; a human still reads the list and
+discards what is not a law.
 
 **Reports and stops, never writes anything.** A new federal law is a
 handful a year, and a wrong `abrev` renames a release asset and orphans it
@@ -32,14 +32,10 @@ import argparse
 import sys
 from pathlib import Path
 
-# `dofjson` and `nota2md` are not dependencies of the package: they come from
-# PyPI (`pip install dofjson nota2md`, or `uv sync --group scripts`), and
 # `scjn` itself is the repository root.
 _RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_RAIZ))
 
-from dofjson.titulos import legal_provisions_titles  # noqa: E402
-from nota2md.linking import newest_dof_publication_dates  # noqa: E402
 from scjn.api import ScjnApi, grupo_de_categoria  # noqa: E402
 from scjn.catalog import mint_abrev, slugify  # noqa: E402
 from scjn.release import download_scjn_leyes_catalog  # noqa: E402
@@ -49,14 +45,20 @@ from scjn.release import download_scjn_leyes_catalog  # noqa: E402
 _FRASES_DESCUBRIMIENTO = (("ley", "LEY"), ("codigo", "CODIGO"), ("constitucion", "CONSTITUCION"))
 
 
-def discover(
-    catalogo: list[dict], *, api: ScjnApi | None = None, cache_dir=None, log=print
-) -> list[dict]:
-    """Federal laws the SCJN lists that `catalogo` does not have, each
-    confirmed against the DOF and carrying a suggested `abrev`.
+def _iso(fecha: str | None) -> str | None:
+    """`DD-MM-YYYY` (the SCJN reform table's own shape) as ISO `YYYY-MM-DD`."""
+    if not fecha or len(fecha) != 10:
+        return None
+    return f"{fecha[6:10]}-{fecha[3:5]}-{fecha[0:2]}"
 
-    Never writes anything. See the module docstring for why the DOF
-    confirmation is not optional."""
+
+def discover(catalogo: list[dict], *, api: ScjnApi | None = None, log=print) -> list[dict]:
+    """Federal laws the SCJN lists that `catalogo` does not have, each
+    confirmed against the SCJN's own reform table and carrying a suggested
+    `abrev`.
+
+    Never writes anything. See the module docstring for why the confirmation
+    is not optional."""
     api = api or ScjnApi()
     conocidos = {slugify(e["abrev"]) for e in catalogo}
     nombres_conocidos = {e["nombre"].strip().upper() for e in catalogo}
@@ -87,13 +89,18 @@ def discover(
     if not desconocidos:
         return []
 
-    log(f"  confirmando {len(desconocidos)} candidato(s) contra el DOF...")
-    confirmadas = newest_dof_publication_dates(
-        {n: n for n in desconocidos},
-        legal_provisions_titles(log=(lambda *_a, **_k: None))
-        if cache_dir is None
-        else legal_provisions_titles(cache_dir, log=(lambda *_a, **_k: None)),
-    )
+    log(f"  confirmando {len(desconocidos)} candidato(s) contra su tabla de reformas de la SCJN...")
+    confirmadas: dict[str, str] = {}
+    for nombre, id_ordenamiento in sorted(desconocidos.items()):
+        try:
+            reformas = api.reformas_of_ordenamiento(id_ordenamiento)
+        except Exception as exc:
+            log(f"  aviso: {nombre}: la SCJN no dio su tabla de reformas ({exc})")
+            continue
+        fechas = [_iso(r.fecha_publicacion) for r in reformas if r.tieneArticulos]
+        fechas = [f for f in fechas if f]
+        if fechas:
+            confirmadas[nombre] = max(fechas)
 
     tomados = set(conocidos)
     candidatos = []
@@ -118,20 +125,15 @@ def main(argv=None) -> int:
         help="scjn-leyes release cache (scjn.cache.CACHE_DIR when not given) -- "
              "must already have indice-global.json.gz; run `scjn download` first",
     )
-    parser.add_argument(
-        "--dof-cache-dir", default=None, metavar="DIR",
-        help="notas-archivo cache the DOF confirmation reads titles from "
-             "(dofjson.titulos.CACHE_DIR when not given)",
-    )
     args = parser.parse_args(argv)
 
     def log(mensaje: str) -> None:
         print(mensaje, file=sys.stderr)
 
     catalogo = download_scjn_leyes_catalog(freshness=False, cache_dir=args.cache_dir)
-    candidatos = discover(catalogo, cache_dir=args.dof_cache_dir, log=log)
+    candidatos = discover(catalogo, log=log)
     if not candidatos:
-        log("descubrimiento: ninguna ley federal nueva confirmada contra el DOF")
+        log("descubrimiento: ninguna ley federal nueva confirmada por la SCJN")
         return 0
     log(f"descubrimiento: {len(candidatos)} candidato(s) -- NO se escribieron:")
     for c in candidatos:

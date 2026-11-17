@@ -69,8 +69,8 @@ class TestResuelveCacheDir(unittest.TestCase):
             self.assertEqual(cache.resuelve_cache_dir(None), Path("/tmp/despues"))
 
     def test_una_ruta_se_usa_tal_cual(self):
-        # A diferencia de nota2md.cache, no hay modo "sin cache": todo lector
-        # de scjn.release es de disco (issue #209).
+        # No hay modo "sin cache": todo lector de scjn.release es de disco
+        # (issue #209).
         self.assertEqual(cache.resuelve_cache_dir("/tmp/mia"), Path("/tmp/mia"))
 
 

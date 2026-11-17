@@ -2,7 +2,7 @@
 
 An integration test, not a unit test: it downloads `indice-global.json.gz` and
 one law's own tarball over the network, so it is excluded from the routine
-run the same way `nota2md`'s `test_leyes_44.py` is from its own:
+run:
 
     pytest tests -q --ignore=tests/test_release_red.py --ignore=tests/test_api_red.py
 
@@ -11,9 +11,11 @@ CI runs it in its own `network` job (`test.yml`).
 What it is here to catch is the one thing no fabricated tarball can: that the
 asset actually published matches what the readers expect — a corpus
 re-packaged without re-uploading `indice-global.json.gz` (see
-`scripts/empaqueta_scjn_leyes.py`, and issue #148) resolves a codNota to a
-snapshot file that is no longer in the law's tarball, and that shows up here
-and nowhere else.
+`scripts/empaqueta_scjn_leyes.py`, and issue #148) lists a law whose tarball
+no longer matches, and that shows up here and nowhere else. The releases
+published before the DOF linking left this repository still carry a `codNota`
+section in the index and an `indice.json` in every tarball: the readers must
+ignore them, and this test reads exactly those assets.
 
 `lfca` is the law used because it is small (10 snapshots) and because it is
 one of the two the SCJN does not index at all — its snapshots were built by
@@ -33,6 +35,7 @@ from scjn.release import (
     _assets_de_release,
     _tag_de_parte,
     download_scjn_leyes_assets,
+    download_scjn_leyes_corpus,
     download_scjn_leyes_index,
     download_scjn_reglamentos_assets,
     download_scjn_reglamentos_index,
@@ -73,27 +76,24 @@ class TestReleaseReal(unittest.TestCase):
         self.assertEqual(self.indice["coleccion"], "leyes")
         self.assertIn(SLUG, self.indice["instrumentos"])
 
-    def test_las_claves_del_indice_publicado_son_enteros(self):
-        self.assertTrue(all(isinstance(cod, int) for cod in self.indice["codNota"]))
+    def test_el_indice_leido_no_trae_seccion_codnota_aunque_el_publicado_la_tenga(self):
+        self.assertNotIn("codNota", self.indice)
 
     def test_el_indice_se_cacheo_en_disco(self):
         self.assertTrue((self.cache_dir / "scjn-leyes" / "indice-global.json.gz").is_file())
 
-    def _un_codnota_de_lfca(self) -> tuple[int, str]:
-        for cod, entradas in self.indice["codNota"].items():
-            if len(entradas) == 1 and entradas[0]["slug"] == SLUG:
-                return cod, entradas[0]["archivo"]
-        self.skipTest(f"el indice publicado no enlaza ningun codNota solo a {SLUG}")
-
-    def test_resuelve_un_codnota_de_lfca_a_su_snapshot_publicado(self):
-        _, archivo = self._un_codnota_de_lfca()
-        # markdown_de_snapshot needs the law's own tarball cached too --
-        # setUpClass only downloaded the (much smaller) index.
+    def test_lee_el_snapshot_mas_reciente_de_lfca_sin_campos_de_enlace(self):
+        # The law's own tarball is not cached yet -- setUpClass only
+        # downloaded the (much smaller) index.
         download_scjn_leyes_assets([SLUG], cache_dir=self.cache_dir)
 
+        snapshots = download_scjn_leyes_corpus(SLUG, cache_dir=self.cache_dir)["snapshots"]
+        archivo = snapshots[-1]["archivo"]
         markdown = markdown_de_snapshot(SLUG, archivo, cache_dir=self.cache_dir)
 
         self.assertTrue(archivo.endswith(".md"))
+        for snapshot in snapshots:
+            self.assertEqual(set(snapshot), {"archivo", "fecha_publicacion", "markdown"})
         # Lo que hace auditable el resultado: la cabecera de procedencia.
         self.assertIn("fuente: scjn", markdown)
 

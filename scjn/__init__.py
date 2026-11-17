@@ -11,14 +11,9 @@ The SCJN is not an official source of legal text — the Diario Oficial de la
 Federación remains that; this package's own crawl is a convenience corpus
 its consolidated view makes possible, not a replacement for it.
 
-This is Fase 3 of a larger split (issue #206/#209). `codNota` linking —
-matching a snapshot to the DOF `codNota` that produced it — stays one layer
-up, in the downstream package that depends on this one: a `codNota` is a DOF
-concept, so that seam sits there, calling the readers below (this package
-never imports back — see `tests/test_boundary.py`). No id-keyed
-collection has such linking at all yet (issue #220's own Scope, unchanged by
-#222 and #277) — a future issue adds it for reglamentos, lineamientos,
-tratados, estatutos and laws alike.
+This package holds SCJN data only: nothing in it, or in the releases it
+reads, links a snapshot to the Diario Oficial de la Federación note that
+published it. That linking lives outside this repository.
 """
 
 from scjn.release import (

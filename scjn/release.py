@@ -14,10 +14,9 @@ raises `AssetNotCached` rather than attempting one. Only
 to the network; a caller who wants the corpus on disk runs that first,
 exactly once, and every reader afterwards is offline.
 
-Resolving a `codNota` back to the snapshot it produced is **not** here: a
-`codNota` is a DOF concept, so that pair of functions lives one layer up,
-calling the readers below (issue #208/#209) -- this package never imports
-that layer, keeping the dependency direction one-way (see `test_boundary.py`).
+This package holds SCJN data only: nothing here links a snapshot to the
+*Diario Oficial de la Federación* note that published it. That linking lives
+outside this repository.
 """
 
 import gzip
@@ -109,10 +108,10 @@ LIMITE_ASSETS_POR_RELEASE = 1000
 #: raise, not loop forever.
 _MAX_PARTES = 50
 
-#: The reverse index published alongside the per-law tarballs, the union of
-#: every `indice.json` inverted by codNota and stripped of all text, so
-#: resolving "which law does this codNota reform" costs a few hundred KB
-#: instead of the ~380 MB the whole corpus weighs.
+#: The index published alongside the per-law tarballs: one entry per
+#: instrument (name, asset, snapshot count, classification), stripped of all
+#: text, so listing the corpus costs a few hundred KB instead of the ~380 MB
+#: the whole corpus weighs.
 ASSET_INDICE_GLOBAL = "indice-global.json.gz"
 
 #: The per-law metadata the SCJN's own search carries and this release
@@ -167,30 +166,23 @@ class AssetNotCached(Exception):
         self.cache_dir = cache_dir
 
 
-def construye_indice_global(instrumentos: list[dict], generado: str) -> tuple[dict, dict]:
-    """The `indice-global.json.gz` payload for `instrumentos`, plus the counts
-    the packaging manifest reports — see `ASSET_INDICE_GLOBAL`.
+def construye_indice_global(instrumentos: list[dict], generado: str) -> dict:
+    """The `indice-global.json.gz` payload for `instrumentos` -- see
+    `ASSET_INDICE_GLOBAL`.
 
-    Each entry of `instrumentos` is ``{"slug", "nombre", "asset", "indice"}``,
-    where `indice` is that law's own `indice.json` (empty/absent for a law
-    crawled but never linked). The result is::
+    Each entry of `instrumentos` is ``{"slug", "nombre", "asset"?,
+    "snapshots"?, <each of CAMPOS_CLASIFICACION>?, "materia"?, "vigencia"?,
+    "resumen"?}``. The result is::
 
         {"generado", "coleccion",
          "instrumentos": {slug: {"nombre", "asset", "snapshots",
-                                 "materia"?, "vigencia"?, "resumen"?}},
-         "codNota": {"4967917": [{"slug", "archivo", "title_link_status",
-                                  "content_diff_confirmed_codNota",
-                                  "content_diff_score"}]}}
+                                 "categoria_ordenamiento"?, "ambito"?,
+                                 "pais"?, "estado"?, "municipio"?,
+                                 "materia"?, "vigencia"?, "resumen"?}}}
 
-    Two shapes here are deliberate, not incidental:
-
-    * The `codNota` keys are **strings** — JSON has no integer keys. Readers
-      (`download_scjn_leyes_index`) convert them back to `int` on load.
-    * Each value is a **list**, not a single object: one decree routinely
-      reforms several laws at once, and collapsing that into a dict would
-      silently keep whichever law happened to be packaged last. Leaving it a
-      list is what lets a caller resolving a `codNota` back to its snapshot
-      raise on the ambiguity instead of guessing (issue #117, D4).
+    `snapshots` is a plain count, read verbatim off the entry (0 when it has
+    none): the leyes tarballs carry the snapshots and `estado.json` only, so
+    there is no per-instrument table to derive it from.
 
     `materia`/`vigencia`/`resumen` (`CAMPOS_METADATOS`, issue #215) are copied
     from the instrument entry when it carries them — the SCJN's own
@@ -204,9 +196,9 @@ def construye_indice_global(instrumentos: list[dict], generado: str) -> tuple[di
     `pais`, `estado`, `municipio`, issue #8) are copied the same way, with the
     same absent-never-`null` rule.
 
-    Only snapshots with a `codNota` actually linked make it in (D2): the index
-    is the list of what we *know*, so an `ambiguous` or `unlinked` snapshot is
-    counted in the returned tally and left out of the payload.
+    There is no `codNota` section: the DOF is not a source of this
+    repository, and a payload published before this change that still has one
+    is read without it being used (`download_scjn_leyes_index`).
 
     `coleccion` is written as the literal `"leyes"`. It stopped being a
     parameter in issue #189, when `leyes` became the project's only
@@ -215,52 +207,23 @@ def construye_indice_global(instrumentos: list[dict], generado: str) -> tuple[di
     release format for no gain.
     """
     entradas_instrumentos: dict[str, dict] = {}
-    por_cod_nota: dict[str, list[dict]] = {}
-    conteos = {"linked": 0, "ambiguous": 0, "unlinked": 0, "sin_indice": 0}
-
     for instrumento in sorted(instrumentos, key=lambda i: i["slug"]):
         slug = instrumento["slug"]
-        indice = instrumento.get("indice") or []
         entradas_instrumentos[slug] = {
             "nombre": instrumento["nombre"],
             "asset": instrumento.get("asset") or f"{slug}.tgz",
-            "snapshots": len(indice) or instrumento.get("snapshots", 0),
+            "snapshots": instrumento.get("snapshots", 0),
         }
         for campo in (*CAMPOS_CLASIFICACION, *CAMPOS_METADATOS):
             valor = instrumento.get(campo)
             if valor:
                 entradas_instrumentos[slug][campo] = valor
-        if not indice:
-            conteos["sin_indice"] += 1
-            continue
 
-        for entrada in indice:
-            cod = entrada.get("codNota")
-            if cod is None:
-                # `title_link_status` says *why* it is not linked when
-                # enlaza_scjn_legislacion.py got that far; a snapshot from
-                # before that field existed is simply unlinked.
-                estado = entrada.get("title_link_status", "unlinked")
-                conteos[estado] = conteos.get(estado, 0) + 1
-                continue
-            conteos["linked"] += 1
-            por_cod_nota.setdefault(str(cod), []).append({
-                "slug": slug,
-                "archivo": entrada["archivo"],
-                "title_link_status": entrada.get("title_link_status"),
-                "content_diff_confirmed_codNota": entrada.get(
-                    "content_diff_confirmed_codNota"
-                ),
-                "content_diff_score": entrada.get("content_diff_score"),
-            })
-
-    indice_global = {
+    return {
         "generado": generado,
         "coleccion": "leyes",
         "instrumentos": entradas_instrumentos,
-        "codNota": {cod: por_cod_nota[cod] for cod in sorted(por_cod_nota, key=int)},
     }
-    return indice_global, conteos
 
 
 def _tag_de_parte(base: str, n: int) -> str:
@@ -394,12 +357,13 @@ _MEMO_INDICE_GLOBAL: dict[str, dict] = {}
 
 
 def download_scjn_leyes_index(*, cache_dir=None) -> dict:
-    """The `scjn-leyes` release's reverse index (`ASSET_INDICE_GLOBAL`), as the
-    dict `construye_indice_global` wrote — except that its `codNota` keys come
-    back as `int`, not the strings JSON forced them into.
+    """The `scjn-leyes` release's index (`ASSET_INDICE_GLOBAL`), as the dict
+    `construye_indice_global` wrote. An index published before the DOF
+    linking was removed from this repository still has a `codNota` section;
+    it is dropped here, so no reader sees it.
 
-    Memoized per cache directory for the life of the process, so resolving a
-    whole batch of notes reads the file once. Reads only `cache_dir`
+    Memoized per cache directory for the life of the process, so reading a
+    whole batch of laws reads the file once. Reads only `cache_dir`
     (`scjn.cache.CACHE_DIR` when not given) — raises `AssetNotCached` while
     the index is not cached there yet; run `scjn download` first.
     """
@@ -410,7 +374,9 @@ def download_scjn_leyes_index(*, cache_dir=None) -> dict:
 
     contenido = _read_asset(ASSET_INDICE_GLOBAL, directorio)
     indice = json.loads(gzip.decompress(contenido).decode("utf-8"))
-    indice["codNota"] = {int(cod): entradas for cod, entradas in indice["codNota"].items()}
+    # An index published before the DOF linking left this repository carries
+    # a `codNota` section: tolerated, never used.
+    indice.pop("codNota", None)
     _MEMO_INDICE_GLOBAL[clave] = indice
     return indice
 
@@ -435,21 +401,30 @@ def markdown_de_snapshot(
     return texto if outline else strip_markers(texto)
 
 
+def _es_snapshot(relativo: str) -> bool:
+    """Whether the member `relativo` (its path inside the tarball, without the
+    `<slug>/` prefix) is a snapshot: not `estado.json`, and not the
+    `indice.json` / `notas/` a tarball published before the DOF linking left
+    this repository still carries."""
+    return (
+        relativo != ARCHIVO_ESTADO
+        and relativo != "indice.json"
+        and not relativo.startswith("notas/")
+    )
+
+
 def download_scjn_leyes_corpus(slug: str, *, cache_dir=None) -> dict:
     """One `leyes` instrument of the SCJN-based corpus (issue #128), by its
     own `slug`, as ``{"slug": ..., "snapshots": [...]}`` — one entry per
-    snapshot, each carrying its own `indice.json` fields (`fecha_publicacion`,
-    `codNota`, `ratio_similitud`, `sospechoso`, `title_candidates`,
-    `title_link_status`, `content_diff_confirmed_codNota`,
-    `content_diff_score`) plus its own Markdown body as `markdown` and, as
-    `notas`, the DOF text of every candidate that was considered for it
-    (``{codNota: markdown}``) — so the link can be audited without going
-    back to the network.
+    snapshot, each carrying its own `archivo`, `fecha_publicacion` and
+    Markdown body as `markdown`, oldest first.
 
-    An instrument crawled but never linked (`scripts/enlaza_scjn_legislacion.py`
-    has not run for it yet) is still packaged with its raw snapshots; each of
-    those comes back with only `archivo`/`codNota=None`/`markdown`/`notas={}`
-    set, no confidence fields, rather than being dropped.
+    There is no table to read the dates from: every snapshot's date comes
+    straight off its own file name (`DD-MM-YYYY.md`, or `DD-MM-YYYY-N.md` for
+    a same-day repeat), the same rule the id-keyed collections use. A tarball
+    published before the DOF linking left this repository still holds an
+    `indice.json` and a `notas/` folder; neither is read, and neither is a
+    snapshot.
 
     Reads only that law's own already-cached `<slug>.tgz` asset. Raises
     `AssetNotCached` while it is not on disk under `cache_dir` yet — run
@@ -460,39 +435,21 @@ def download_scjn_leyes_corpus(slug: str, *, cache_dir=None) -> dict:
     with tarfile.open(fileobj=io.BytesIO(contenido), mode="r:gz") as tar:
         miembros = {m.name: tar.extractfile(m).read() for m in tar if m.isfile()}
 
-    indice = None
-    cuerpos: dict[str, str] = {}
-    notas: dict[int, str] = {}
-    for nombre, contenido_miembro in miembros.items():
-        # Every member is prefixed with `<slug>/` so the tarball unpacks
-        # anywhere; the prefix carries no information the caller needs.
-        _, _, relativo = nombre.partition("/")
-        if relativo == "indice.json":
-            indice = json.loads(contenido_miembro)
-        elif relativo.startswith("notas/"):
-            cod = relativo[len("notas/nota-"):].removesuffix(".md")
-            notas[int(cod)] = contenido_miembro.decode("utf-8")
-        else:
-            cuerpos[relativo] = contenido_miembro.decode("utf-8")
-
-    if indice is not None:
-        snapshots = [
+    snapshots = sorted(
+        (
             {
-                **entrada,
-                "markdown": cuerpos.get(entrada["archivo"]),
-                "notas": {
-                    cod: notas[cod]
-                    for cod in entrada.get("title_candidates", [])
-                    if cod in notas
-                },
+                "archivo": relativo,
+                "fecha_publicacion": relativo[:10],
+                "markdown": contenido_miembro.decode("utf-8"),
             }
-            for entrada in indice
-        ]
-    else:
-        snapshots = [
-            {"archivo": nombre, "codNota": None, "markdown": texto, "notas": {}}
-            for nombre, texto in sorted(cuerpos.items())
-        ]
+            for nombre, contenido_miembro in miembros.items()
+            # Every member is prefixed with `<slug>/` so the tarball unpacks
+            # anywhere; the prefix carries no information the caller needs.
+            for relativo in (nombre.partition("/")[2],)
+            if _es_snapshot(relativo)
+        ),
+        key=lambda s: (_fecha(s["fecha_publicacion"]), s["archivo"]),
+    )
     return {"slug": slug, "snapshots": snapshots}
 
 
@@ -521,17 +478,17 @@ def iter_current_federal_laws(
     slugs: list[str] | None = None, *, cache_dir=None
 ) -> Iterator[dict]:
     """The current text of every federal law the `scjn-leyes` release
-    publishes, one ``{"slug", "nombre", "materia", "vigencia", "resumen",
-    "fecha_publicacion", "codNota", "archivo", "markdown"}`` dict per law --
-    "current" meaning the snapshot with the newest `fecha_publicacion` in
-    that law's own `indice.json`.
+    publishes, one ``{"slug", "nombre", <each of CAMPOS_CLASIFICACION>,
+    "materia", "vigencia", "resumen", "fecha_publicacion", "archivo",
+    "markdown"}`` dict per law -- "current" meaning the snapshot whose file
+    name carries the newest date.
 
     A true generator: one `<slug>.tgz` asset is opened, its winning snapshot
     read, and the tarball's bytes dropped before the next `slug` is reached,
     so iterating the whole corpus never holds more than one law in memory at
     a time. `download_scjn_leyes_corpus` would not do here -- it decodes
-    every snapshot and every `notas/` entry of a law just to keep the one
-    that turns out to be the newest.
+    every snapshot of a law just to keep the one that turns out to be the
+    newest.
 
     `slugs=None` (the default) means "every law this machine has": `cache_dir`
     (`scjn.cache.CACHE_DIR` when not given) is asked for its own `<slug>.tgz`
@@ -553,22 +510,21 @@ def iter_current_federal_laws(
     a statement about the law, not about that text.
 
     `nombre` still comes from `indice-global.json.gz`'s `instrumentos`, which
-    `construye_indice_global` populates for every crawled law regardless of
-    whether it has an `indice.json` -- but that asset can be cached
-    separately from a law's own tarball. When `cache_dir` holds tarballs but
+    `construye_indice_global` populates for every crawled law -- but that
+    asset can be cached separately from a law's own tarball. When `cache_dir` holds tarballs but
     not the index, `nombre` degrades to `None` rather than raising
     `AssetNotCached` for a field nobody asked to read explicitly; call
     `download_scjn_leyes_assets()` (or `scjn download`) to populate the index
     too and get real names back.
 
-    A law never linked (`enlaza_scjn_legislacion.py` has not run for it yet)
-    has no `indice.json` at all: the winner is then the raw snapshot whose
-    file name -- `DD-MM-YYYY.md`, or `DD-MM-YYYY-N.md` for a same-day repeat
-    (`scjn.api.descarga_ordenamiento`'s `-N` suffix) -- carries the newest
-    date, and `codNota` comes back `None`.
+    The newest snapshot is the one whose file name -- `DD-MM-YYYY.md`, or
+    `DD-MM-YYYY-N.md` for a same-day repeat (`scjn.api.descarga_ordenamiento`'s
+    `-N` suffix) -- carries the newest date. A tarball published before the
+    DOF linking left this repository also holds an `indice.json` and a
+    `notas/` folder; they are not snapshots and are ignored.
 
-    `fecha_publicacion`, both in `indice.json` and in a raw snapshot's own
-    file name, is `DD-MM-YYYY` (`scjn.header._fecha`'s format), not ISO --
+    `fecha_publicacion`, as in a snapshot's file name, is `DD-MM-YYYY`
+    (`scjn.header._fecha`'s format), not ISO --
     comparing it lexicographically would rank `"05-01-1999"` ahead of
     `"22-05-1998"`. The winner is chosen by parsing the date with `_fecha`;
     `archivo` breaks a tie between two snapshots published the same day, only
@@ -592,34 +548,15 @@ def iter_current_federal_laws(
     for slug in slugs:
         contenido = _read_asset(f"{slug}.tgz", directorio)
         with tarfile.open(fileobj=io.BytesIO(contenido), mode="r:gz") as tar:
-            try:
-                miembro_indice = tar.getmember(f"{slug}/indice.json")
-            except KeyError:
-                miembro_indice = None
-
-            if miembro_indice is not None:
-                indice = json.loads(tar.extractfile(miembro_indice).read())
-                ganador = max(
-                    indice, key=lambda e: (_fecha(e["fecha_publicacion"]), e["archivo"])
-                )
-                cod_nota = ganador.get("codNota")
-                fecha_publicacion = ganador["fecha_publicacion"]
-                archivo = ganador["archivo"]
-            else:
-                # Never linked: no indice.json, so nothing but the raw
-                # snapshots' own file names says which is newest. estado.json
-                # and notas/ are shipped alongside them but are not snapshots.
-                candidatos = [
-                    relativo
-                    for m in tar.getmembers()
-                    if m.isfile()
-                    for relativo in (m.name.partition("/")[2],)
-                    if relativo not in ("indice.json", ARCHIVO_ESTADO)
-                    and not relativo.startswith("notas/")
-                ]
-                archivo = max(candidatos, key=lambda nombre: (_fecha(nombre[:10]), nombre))
-                cod_nota = None
-                fecha_publicacion = archivo[:10]
+            candidatos = [
+                relativo
+                for m in tar.getmembers()
+                if m.isfile()
+                for relativo in (m.name.partition("/")[2],)
+                if _es_snapshot(relativo)
+            ]
+            archivo = max(candidatos, key=lambda nombre: (_fecha(nombre[:10]), nombre))
+            fecha_publicacion = archivo[:10]
 
             miembro_md = tar.getmember(f"{slug}/{archivo}")
             markdown = tar.extractfile(miembro_md).read().decode("utf-8")
@@ -633,7 +570,6 @@ def iter_current_federal_laws(
                 for campo in (*CAMPOS_CLASIFICACION, *CAMPOS_METADATOS)
             },
             "fecha_publicacion": fecha_publicacion,
-            "codNota": cod_nota,
             "archivo": archivo,
             "markdown": markdown,
         }
@@ -769,7 +705,7 @@ def download_scjn_leyes_assets(
 
     `slugs` picks which laws to fetch; None (the default) means every law the
     release publishes. The index is always included — it is what every
-    reader resolves a codNota or a law's freshness through, and it costs a
+    reader resolves a law's name and classification through, and it costs a
     few hundred KB against the corpus' ~380 MB.
 
     Returns one ``(path, downloaded)`` pair per asset, in the order they were
@@ -821,13 +757,10 @@ def download_scjn_leyes_assets(
 # 4); three are not, so this generic core replaces what used to be a second,
 # independently-duplicated copy of index/corpus/local-ids/assets. Every
 # `Coleccion` (`scjn.cache.REGLAMENTOS`/`LINEAMIENTOS`/`TRATADOS`) shares it; `leyes`
-# keeps its own separate path above, untouched -- it has `abrev`,
-# `indice.json`, `notas/` and a `codNota` reverse index, none of which any
+# keeps its own separate path above, untouched -- it has `abrev`, which no
 # id-keyed collection has.
 #
-# Neither id-keyed collection links to a DOF `codNota` (issue #220's Scope,
-# unchanged by #222): `indice-global.json.gz` here carries no `codNota`
-# section, and a tarball ships no `indice.json`/`notas/` -- only
+# A tarball of an id-keyed collection ships only
 # `<id_ordenamiento>/<fecha>.md` and `<id_ordenamiento>/estado.json`.
 
 #: The SCJN's own classification of the ordenamiento at seeding time
@@ -868,8 +801,8 @@ class SinTextoEnSCJN(Exception):
 def _indice_global_por_id(coleccion: str, instrumentos: list[dict], generado: str) -> dict:
     """The generic `indice-global.json.gz` payload builder behind
     `construye_indice_global_reglamentos`/`construye_indice_global_lineamientos`
-    (issue #222's Fase 0) -- the sibling of `construye_indice_global`, without
-    a `codNota` section (no DOF linking for either id-keyed collection)::
+    (issue #222's Fase 0) -- the sibling of `construye_indice_global`, keyed by
+    `id_ordenamiento` instead of a slug::
 
         {"generado", "coleccion": <coleccion>,
          "instrumentos": {id_ordenamiento: {"nombre", "asset"?, "snapshots",
@@ -882,9 +815,9 @@ def _indice_global_por_id(coleccion: str, instrumentos: list[dict], generado: st
     "snapshots"?, <each of CAMPOS_CLASIFICACION>?, "materia"?, "vigencia"?,
     "resumen"?}``, keyed in the result by `id_ordenamiento`
     (`scjn.catalog.instrumento_key`) rather than by a title-derived slug —
-    neither id-keyed collection has an `abrev`. `snapshots` is a plain count:
-    unlike `construye_indice_global`, there is no `indice.json` to derive it
-    from, so it is read verbatim off `instrumento["snapshots"]`.
+    neither id-keyed collection has an `abrev`. `snapshots` is a plain count,
+    read verbatim off `instrumento["snapshots"]`, as in
+    `construye_indice_global`.
 
     **`asset` is present only when `snapshots` is not zero** (issue #222's
     decision 6): an instrument the SCJN classifies but serves no
@@ -998,10 +931,8 @@ _MEMO_INDICE_POR_ID: dict[tuple[str, str], dict] = {}
 
 def _index_de_release(coleccion: Coleccion, *, cache_dir=None) -> dict:
     """The generic index reader behind `download_scjn_reglamentos_index`/
-    `download_scjn_lineamientos_index` (issue #222's Fase 0). There is no
-    `codNota` section to convert to `int` here (no DOF linking for either
-    id-keyed collection), so this reader is otherwise a plain disk read,
-    memoized per `(coleccion, cache_dir)`.
+    `download_scjn_lineamientos_index` (issue #222's Fase 0): a plain disk
+    read, memoized per `(coleccion, cache_dir)`.
 
     Raises `AssetNotCached` while the index is not cached yet — run `scjn
     download --coleccion <nombre>` first.
@@ -1025,10 +956,8 @@ def _corpus_de_release(coleccion: Coleccion, id_ordenamiento: str | int, *, cach
     `download_scjn_lineamientos_corpus` (issue #222's Fase 0), as
     ``{"id_ordenamiento": ..., "snapshots": [...]}`` — one entry per
     snapshot, each carrying its own `archivo`/`fecha_publicacion`/`markdown`,
-    oldest first. There is never an `indice.json` to read here (no DOF
-    linking for either id-keyed collection) — every snapshot's date comes
-    straight off its own file name, the same fallback `download_scjn_leyes_corpus`
-    uses for a law crawled but never linked.
+    oldest first. Every snapshot's date comes straight off its own file
+    name, the same rule `download_scjn_leyes_corpus` uses.
 
     Raises, in this order (decision 10, issue #222 -- part of the contract,
     not an implementation detail):
@@ -1390,12 +1319,10 @@ def _iter_current_de_release(
     `_corpus_de_release` would not do here — it decodes every snapshot of an
     instrument just to keep the one that turns out to be the newest.
 
-    There is no `indice.json` in an id-keyed tarball (no DOF linking for
-    either collection, issue #220), so "newest" comes from the snapshots'
-    own file names, `DD-MM-YYYY.md` — parsed with `_fecha` rather than
-    compared as text, and tie-broken by `archivo` only to make the pick
-    deterministic. There is no `codNota` and no `abrev` in what comes back,
-    for the same reason.
+    "Newest" comes from the snapshots' own file names, `DD-MM-YYYY.md` —
+    parsed with `_fecha` rather than compared as text, and tie-broken by
+    `archivo` only to make the pick deterministic. There is no `abrev` in
+    what comes back: an id-keyed collection has none.
 
     `materia`/`vigencia`/`resumen`/`nombre` come off the cached index at no
     extra request, and are **partial** for these collections, unlike leyes:

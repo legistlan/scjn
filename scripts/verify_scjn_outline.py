@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Verify the contract between the SCJN Markdown writer and its readers
-(issue #303), over the four local corpora and their raw API answers. Read-only:
+(issue #303), over the five local corpora and their raw API answers. Read-only:
 no network, nothing under ``scripts/scjn/`` is opened for writing; the only
 files written are the ones named by ``--json`` and ``--write-vocabulary``.
 
@@ -32,7 +32,7 @@ For each ``scripts/scjn/<c>/<key>/<snapshot>.md`` this script reports four thing
 Exit status 1 only on a contract violation (a round-trip or an invariance one), never
 on drift, ``no-raw`` or a gap.
 
-    ./scripts/verify_scjn_outline.py                          # all four collections
+    ./scripts/verify_scjn_outline.py                          # all five collections
     ./scripts/verify_scjn_outline.py --coleccion tratados --jobs 4 --json /tmp/v.json
     ./scripts/verify_scjn_outline.py --compare output/outline-before.json
     ./scripts/verify_scjn_outline.py --guard                  # audit the completeness guard

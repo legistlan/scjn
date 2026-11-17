@@ -1,5 +1,5 @@
 """Shared discovery machinery for the SCJN's id-keyed collections
-(`scjn-reglamentos`, `scjn-lineamientos`, `scjn-tratados`) -- issue #222's
+(`scjn-reglamentos`, `scjn-lineamientos`, `scjn-tratados`, `scjn-estatutos`) -- issue #222's
 Fase 0, extracted out of `scripts/discover_federal_reglamentos.py` (issue
 #220) so a further collection's own discovery script is a thin argparse wrapper naming its
 category and phrases, not another ~250-line copy of the same three passes.

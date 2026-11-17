@@ -69,7 +69,7 @@ def ratio_similitud(titulo: str, nombre: str) -> float:
 def es_acuerdo_interno(titulo: str) -> bool:
     """Whether `titulo` is one of the SCJN's own internal administrative
     agreements (a Pleno "ACUERDO GENERAL") rather than an ordenamiento of
-    the catalogue's own three collections — `lisr`/`lsint`'s failure mode:
+    the catalogue's own collections — `lisr`/`lsint`'s failure mode:
     the search returned no actual law as a candidate, only an unrelated
     SCJN acuerdo that happened to mention the searched name in its own long
     title, and nothing in Ámbito/Vigencia/similarity tells those apart from

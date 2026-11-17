@@ -1001,7 +1001,7 @@ def rastrea_coleccion(
     return fallidos
 
 
-# --- id-keyed collections (`reglamentos`, `lineamientos`, `tratados`): the narrow path,
+# --- id-keyed collections (`reglamentos`, `lineamientos`, `tratados`, `estatutos`): the narrow path,
 # shared (issue #222's Fase 0) -----------------------------------------
 #
 # Only the two pieces any id-keyed collection actually needs exist here: a
@@ -1317,7 +1317,7 @@ def main(argv=None) -> int:
         metavar="SLUG",
         help=(
             "repetible; slug_instrumento (--coleccion leyes) o id_ordenamiento "
-            "(--coleccion reglamentos/lineamientos/tratados) a rastrear, sin tocar la SCJN para "
+            "(--coleccion reglamentos/lineamientos/tratados/estatutos) a rastrear, sin tocar la SCJN para "
             "ningun otro (issue #148). A diferencia de --reintenta, no borra nada: los "
             "snapshots ya en disco se conservan y solo se bajan las reformas nuevas."
         ),

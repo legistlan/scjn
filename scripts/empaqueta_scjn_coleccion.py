@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Package an id-keyed SCJN corpus (`reglamentos`, issue #220; `lineamientos`,
 issue #222; `tratados`, issue #277; `estatutos`, issue #9) into one byte-reproducible tarball *per instrument with text*,
-plus a human-readable manifest and a checksum file. Shared by the three
+plus a human-readable manifest and a checksum file. Shared by the four
 id-keyed collections (generalized out of the `reglamentos`-only
 `empaqueta_scjn_reglamentos.py` in issue #222's Fase 0). Every
 ``<id_ordenamiento>.tgz`` ships only ``<id_ordenamiento>/<fecha>.md``

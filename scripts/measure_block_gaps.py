@@ -21,7 +21,7 @@ values, the gap is *explained* (the block was served and wrote nothing) and coun
 apart; only a gap the raw answer does not explain, or one with no raw answer at all,
 is an omission and fails the run.
 
-    ./scripts/measure_block_gaps.py                 # all four collections
+    ./scripts/measure_block_gaps.py                 # all five collections
     ./scripts/measure_block_gaps.py --coleccion tratados --verbose
     ./scripts/measure_block_gaps.py --json /tmp/gaps-before.json
 

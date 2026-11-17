@@ -69,7 +69,7 @@ def seed(outdir: Path, candidatos: list[dict], *, coleccion: str = "reglamentos"
     outright, printed apart -- never touched, crawled or not.
 
     `coleccion` is any name in `scjn.cache.COLECCIONES_POR_ID`
-    (`"reglamentos"`, `"lineamientos"`, `"tratados"`) -- every id-keyed collection shares
+    (`"reglamentos"`, `"lineamientos"`, `"tratados"`, `"estatutos"`) -- every id-keyed collection shares
     this exact seeding logic (issue #222's Fase 0)."""
     escritos = []
     saltados = []

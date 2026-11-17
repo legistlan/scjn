@@ -66,8 +66,7 @@ _SCJN_TRATADOS_RELEASE = "scjn-tratados"
 #: The subdirectory every `scjn-estatutos` asset lives under -- the fifth
 #: id-keyed collection (issue #9): the federal instruments the SCJN classifies
 #: `ESTATUTO` (organic statutes of federal bodies, agencies and universities).
-#: Not published yet: no release of this name exists until a human crawls,
-#: packages and publishes it.
+#: Published on 2026-11-17 (379 instruments).
 _SCJN_ESTATUTOS_RELEASE = "scjn-estatutos"
 
 

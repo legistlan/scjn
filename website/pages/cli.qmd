@@ -17,8 +17,7 @@ never revalidated, so a second run costs no download at all.
 ## `--coleccion`
 
 Which release to download: `leyes` (the default), `reglamentos`,
-`lineamientos`, `tratados` or `estatutos` (the `scjn-estatutos` release is not
-published yet, so downloading it fails until it is).
+`lineamientos`, `tratados` or `estatutos`.
 
 ```bash
 scjn download

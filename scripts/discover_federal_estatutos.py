@@ -8,8 +8,8 @@ which it is modelled on.
 bodies, agencies and universities: 379 federal instruments at the audit of
 13 November 2026 (``q="de"``, ``ambitoF=FEDERAL``, ``categoriaF=ESTATUTO``),
 article-structured and the size of ``lineamientos``. The ``scjn-estatutos``
-release is **not published yet**: this script is the first step of its
-Process A (discover, review, seed, crawl, verify, package, publish).
+release was published on 2026-11-17 (379 instruments): this script is the first
+step of its Process A (discover, review, seed, crawl, verify, package, publish).
 
 A thin wrapper over `scjn.discovery`, naming this collection's own category
 and phrases; the phrase-union paging, the reform-category rescue rule and

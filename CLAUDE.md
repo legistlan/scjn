@@ -10,8 +10,9 @@ the backend of `legislacion.scjn.gob.mx/consulta`), the writer of the Markdown s
 instrument's reforms (`scjn.markdown`, `scjn.outline`) and the disk-first reader of the five SCJN
 releases (`scjn.release`): `scjn-leyes` (315 federal laws, reform-dated snapshots, keyed by
 `abrev`) and the id-keyed `scjn-reglamentos`, `scjn-lineamientos`, `scjn-tratados` and
-`scjn-estatutos` (keyed by `id_ordenamiento`; `scjn-estatutos`, the federal `ESTATUTO` instruments,
-is not published yet). The SCJN is not an official source of legal text; the *Diario Oficial de la
+`scjn-estatutos` (keyed by `id_ordenamiento`; `scjn-estatutos` holds the federal `ESTATUTO`
+instruments). The five releases are published (seven tags counting continuations; the table in the
+README says what each holds). The SCJN is not an official source of legal text; the *Diario Oficial de la
 Federación* is, and `fuente: scjn` in a provenance header means exactly that.
 
 **This repository and its releases hold SCJN data only.** The link between an SCJN snapshot and the
@@ -50,18 +51,21 @@ message, a comment or a docstring is an issue of the monorepo, where those issue
   (`actualizado_publicado` in `scripts/empaqueta_scjn_leyes.py`; no `actualizado` for a law with no
   snapshot); the id-keyed collections have none. An `abrev` is the release's slug and asset name, never re-derived. "Reform N" of a law
   is the SCJN reform table's chronological order.
-- **Old releases are still read.** The `scjn-leyes` release published before the DOF linking left
-  this repository has a `codNota` section in its index and an `indice.json` and `notas/` in every
-  tarball: the readers ignore them (`tests/test_release.py` covers that shape), and the packager
-  never ships them nor the `estado.json` keys the linking wrote (`CLAVES_ESTADO_DOF` in
-  `scripts/empaqueta_scjn_leyes.py`).
+- **Old copies are still read.** No published release has the shape the DOF linking left (the
+  `scjn-leyes` index has no `codNota` section, a tarball holds the snapshots and `estado.json` only,
+  and `estado.json` has none of the keys the linking wrote), but an older copy in a user's cache or
+  in a mirror may: the readers ignore a `codNota` section, an `indice.json` and a `notas/` folder
+  (`tests/test_release.py` covers that shape), and the packager never ships them nor those
+  `estado.json` keys (`CLAVES_ESTADO_DOF` in `scripts/empaqueta_scjn_leyes.py`).
 - **The classification of an instrument** (one value per instrument, never in a snapshot's
   provenance header): `scjn.release.CAMPOS_METADATOS` (`materia`, `vigencia`, `resumen`) and
   `CAMPOS_CLASIFICACION` (`categoria_ordenamiento`, `ambito`, `pais`, `estado`, `municipio`).
   They travel from the API hit (`scjn.api.Ordenamiento`) through `scjn.discovery` and the seed into
   `estado.json`, from it into every collection's `indice-global.json.gz` (the index omits a field
   with no value) and out of every reader (the keys are always returned, `None` where the index has
-  none; an index published before a field existed lacks it, which is not an error).
+  none; an index older than a field lacks it, which is not an error). Every published index carries
+  the classification wherever the SCJN gives it (the backfill was run on all four corpora before
+  the releases were republished on 2026-11-17).
   `scripts/backfill_scjn_classification.py` fills them into the `estado.json` of instruments already
   crawled (match by `idOrdenamiento` only, never ranks, resumable through the
   `clasificacion_consultada` stamp it writes in `estado.json`, skips transport errors and exits 0); a human runs it, re-packages
@@ -113,8 +117,8 @@ writes into `md2akn`'s own repository (`tests/fixtures_units/marker_vocabulary.j
   publish). Every packaging script writes a `PUBLICAR.md` and uploads nothing; a regenerated
   release is replaced in place (same tag, `--clobber`).
 - **Copying the releases.** `scripts/copy_scjn_releases.py <owner>/<name>` copies the release series from a
-  source repository to this one (a series the source lacks, like the unpublished `scjn-estatutos`,
-  is reported and skipped) (title, body and every asset, byte for byte; `--destination`, `--tag`,
+  source repository to this one (a series the source lacks, as `scjn-estatutos` was before it
+  was published, is reported and skipped) (title, body and every asset, byte for byte; `--destination`, `--tag`,
   `--batch`, `--dry-run`), uploads in retried batches, resumes by rerunning and exits non-zero unless
   names, sizes and digests match. It is how a move of owner is done; it publishes nothing new and names
   no source repository (a required argument). Downloads land in the gitignored `scripts/scjn/release-copy/`.
@@ -163,8 +167,8 @@ no overlapping page:
 
 - `docs/source/index.rst`, published under `/dev/`, is the **developer reference**: every name in
   `__all__`, every public method of an exported class and every CLI subcommand gets a verified
-  example, a live doctest run by the `docs` job of `test.yml` against the cached `lfca` law and
-  reglamento `104906`; an exception is written on the page itself, naming the pytest suite that
+  example, a live doctest run by the `docs` job of `test.yml` against the cached `lfca` law,
+  reglamento `104906` and estatuto `111330`; an exception is written on the page itself, naming the pytest suite that
   verifies the behaviour instead (`scjn.api` is the documented one). Private helpers (leading
   underscore) get a full docstring and appear through `:private-members:` but need no example. The
   HTML build is strict (`-n -W`). The strict build and the doctest stay in `test.yml`'s `docs` job
@@ -187,7 +191,8 @@ case, in any tracked file. A `#N` issue reference stays: it names nothing.
 pip install -e ".[test]"
 pytest tests scripts/tests --ignore=tests/test_api_red.py --ignore=tests/test_release_red.py
 pytest tests/test_api_red.py tests/test_release_red.py                   # network: the SCOW API, the release
-scjn download --slug lfca && scjn download --coleccion reglamentos --id 104906   # what the doctests read
+scjn download --slug lfca --refrescar && scjn download --coleccion reglamentos --id 104906 \
+  && scjn download --coleccion estatutos --id 111330   # what the doctests read
 python -m sphinx -n -W --keep-going -b html docs/source docs/build/html   # the strict build
 quarto render website                                                     # the user site, into website/_site
 python -m sphinx -b doctest docs/source docs/build/doctest                # the examples, off the cache

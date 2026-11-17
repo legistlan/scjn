@@ -8,8 +8,7 @@ snapshots and reader of the five SCJN GitHub releases: `scjn-leyes` (a Mexican f
 reform-dated snapshots, keyed by `abrev`) and the id-keyed `scjn-reglamentos`, `scjn-lineamientos`,
 `scjn-tratados` and `scjn-estatutos` (keyed by `id_ordenamiento`; international treaties are the SCJN's
 *ámbito* `TRATADOS INTERNACIONALES`, any category; estatutos are the federal instruments the SCJN
-classifies `ESTATUTO`). The `scjn-estatutos` release is **not published yet**: the code is ready, a human
-still has to discover, crawl, package and publish it. Each snapshot carries a `fuente: scjn` provenance header.
+classifies `ESTATUTO`). All five releases are published (see [the releases](#the-releases-owner)). Each snapshot carries a `fuente: scjn` provenance header.
 The SCJN is **not** an official source of legal text — the *Diario Oficial de la Federación* (DOF)
 remains that; this package's crawl is a convenience corpus the SCJN's own consolidated view makes
 possible, never a replacement for it. This repository and its releases hold SCJN data only: no link to
@@ -29,9 +28,10 @@ of the id-keyed collections, and `scjn.release` holds the release readers (`down
 `download_scjn_leyes_index`, `download_scjn_leyes_catalog`, `iter_current_federal_laws`,
 `markdown_de_snapshot`, `download_scjn_leyes_assets`, `local_slugs`, and the same names with
 `reglamentos`/`lineamientos`/`tratados`/`estatutos`), disk-first, with their own cache directory (`scjn.cache`,
-`$SCJN_CACHE_DIR`). A `scjn-leyes` tarball holds the snapshots and `estado.json`; the release published
-before the DOF linking left this repository also has an `indice.json` and a `notas/` folder in every
-tarball and a `codNota` section in its index, which the readers ignore.
+`$SCJN_CACHE_DIR`). A `scjn-leyes` tarball holds the snapshots and `estado.json`. A copy made before the
+DOF linking left this repository (an old cache or mirror, not what GitHub serves today) also has an
+`indice.json` and a `notas/` folder in every tarball and a `codNota` section in its index, which the
+readers ignore.
 
 Since issue #215 every law also carries the SCJN's own `materia` (subject
 classification), `vigencia` (whether it is still in force — seven values, not
@@ -48,8 +48,9 @@ classification: `categoria_ordenamiento` (`LEY`, `CODIGO`, `REGLAMENTO`, ...), `
 `ESTATAL`, `TRATADOS INTERNACIONALES`), `pais` (what tells the instruments of `scjn-tratados` apart)
 and, for a state-level instrument, `estado` and `municipio` (`scjn.release.CAMPOS_CLASIFICACION`).
 The index omits a field the SCJN gives no value for, and the readers return all five keys, `None`
-where the index has none (an index published before the change has none). They are filled into
-`estado.json` of the instruments already crawled by `scripts/backfill_scjn_classification.py`.
+where the index has none (an index older than the change has none; every published index carries the
+classification wherever the SCJN gives it). They were filled into `estado.json` of the instruments
+already crawled by `scripts/backfill_scjn_classification.py`.
 
     scjn download [--coleccion {leyes,reglamentos,lineamientos,tratados,estatutos}] [--slug SLUG | --id ID]
                   [--cache-dir DIR] [--refrescar]
@@ -159,14 +160,19 @@ Rule numbers below are those of the day each entry was written; `md2akn`'s `RULE
   `_corpus` / `_assets`, `local_estatutos_ids` and `iter_current_estatutos` are the same thin wrappers
   over the generic core, `scjn.cache.ESTATUTOS` joins `COLECCIONES_POR_ID`, `scjn download --coleccion
   estatutos` fetches it, `scjn.release.construye_indice_global_estatutos` is its index builder and
-  `scripts/discover_federal_estatutos.py` its discovery. **The release is not published yet.**
+  `scripts/discover_federal_estatutos.py` its discovery. **`scjn-estatutos` was published on 2026-11-17**
+  (379 instruments, 377 with text, 1,139 snapshots; 178398 is indexed with no snapshot and 111330 with 4 of 5
+  reforms, because the SCJN serves a reform with a missing block that the completeness guard refuses).
+  The five releases were republished that day from this code, without DOF data and with the classification
+  (leyes: 315 laws, 3,709 snapshots; reglamentos 1,087 instruments, 1,083 with text; lineamientos 163, 126
+  with text; tratados 1,455, 1,373 with text).
   **Review fix-2 (found after the fact, same unreleased minor; breaking):** the repository holds SCJN
   data only. The DOF side of `scjn-leyes` is gone: a tarball ships the snapshots and `estado.json` (no
   `indice.json`, no `notas/`, none of the `estado.json` keys the linking wrote), the index has no `codNota`
   section, and `download_scjn_leyes_corpus` / `iter_current_federal_laws` return no `codNota`, `notas` or
   linking field (a snapshot is `archivo`, `fecha_publicacion`, `markdown`; the newest one is chosen from
   the file names). `construye_indice_global` returns the index alone, not an `(index, counts)` pair.
-  The readers still read the releases published before this, ignoring what they carry. In the scripts,
+  The readers still read an older copy of the releases, ignoring what it carries (GitHub no longer serves one). In the scripts,
   `actualizado_dof`, `--dof-only`, `--cache-dir` and the link step of `--actualiza` are gone, and no
   script imports `dofjson` or `nota2md`; the `scripts` dependency group is removed.
 
@@ -213,7 +219,7 @@ Rule numbers below are those of the day each entry was written; `md2akn`'s `RULE
 
 ## The releases' owner
 
-The releases (four today; `scjn-estatutos` is not published yet) live in this repository, [`legistlan/scjn`](https://github.com/legistlan/scjn/releases):
+The five releases (seven tags counting continuations: `scjn-reglamentos` and `scjn-tratados` each have a `-2`) live in this repository, [`legistlan/scjn`](https://github.com/legistlan/scjn/releases):
 `scjn.release.DEFAULT_RELEASE_REPOSITORY` names it, and the environment variable
 `SCJN_RELEASE_REPOSITORY` (`<owner>/<name>`, read on every call by `scjn.release.release_repository`)
 points every lookup at a mirror of the releases elsewhere. Changing the default is a release of this

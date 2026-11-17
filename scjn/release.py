@@ -131,7 +131,7 @@ CAMPOS_METADATOS = ("materia", "vigencia", "resumen")
 #: the instruments of `scjn-tratados` apart) and, for a state-level
 #: instrument, `estado` and `municipio`. Like `CAMPOS_METADATOS` they are one
 #: value per instrument, live in `estado.json` and in the index, never in a
-#: snapshot's provenance header, and an index published before they existed
+#: snapshot's provenance header, and an index older than the fields
 #: simply lacks them.
 CAMPOS_CLASIFICACION = ("categoria_ordenamiento", "ambito", "pais", "estado", "municipio")
 
@@ -197,8 +197,8 @@ def construye_indice_global(instrumentos: list[dict], generado: str) -> dict:
     same absent-never-`null` rule.
 
     There is no `codNota` section: the DOF is not a source of this
-    repository, and a payload published before this change that still has one
-    is read without it being used (`download_scjn_leyes_index`).
+    repository, and an older copy of the payload (an old cache or a mirror;
+    no published index has one) that still has one is read without it being used (`download_scjn_leyes_index`).
 
     `coleccion` is written as the literal `"leyes"`. It stopped being a
     parameter in issue #189, when `leyes` became the project's only
@@ -358,9 +358,10 @@ _MEMO_INDICE_GLOBAL: dict[str, dict] = {}
 
 def download_scjn_leyes_index(*, cache_dir=None) -> dict:
     """The `scjn-leyes` release's index (`ASSET_INDICE_GLOBAL`), as the dict
-    `construye_indice_global` wrote. An index published before the DOF
-    linking was removed from this repository still has a `codNota` section;
-    it is dropped here, so no reader sees it.
+    `construye_indice_global` wrote. An older copy of the index (the published
+    one has none) from before the DOF linking was removed from this
+    repository may have a `codNota` section; it is dropped here, so no reader
+    sees it.
 
     Memoized per cache directory for the life of the process, so reading a
     whole batch of laws reads the file once. Reads only `cache_dir`
@@ -374,8 +375,9 @@ def download_scjn_leyes_index(*, cache_dir=None) -> dict:
 
     contenido = _read_asset(ASSET_INDICE_GLOBAL, directorio)
     indice = json.loads(gzip.decompress(contenido).decode("utf-8"))
-    # An index published before the DOF linking left this repository carries
-    # a `codNota` section: tolerated, never used.
+    # An older copy of the index (not the published one) from before the DOF
+    # linking left this repository may carry a `codNota` section: tolerated,
+    # never used.
     indice.pop("codNota", None)
     _MEMO_INDICE_GLOBAL[clave] = indice
     return indice
@@ -404,8 +406,8 @@ def markdown_de_snapshot(
 def _es_snapshot(relativo: str) -> bool:
     """Whether the member `relativo` (its path inside the tarball, without the
     `<slug>/` prefix) is a snapshot: not `estado.json`, and not the
-    `indice.json` / `notas/` a tarball published before the DOF linking left
-    this repository still carries."""
+    `indice.json` / `notas/` an older copy of a tarball (from before the DOF
+    linking left this repository; no published one has them) may carry."""
     return (
         relativo != ARCHIVO_ESTADO
         and relativo != "indice.json"
@@ -421,10 +423,10 @@ def download_scjn_leyes_corpus(slug: str, *, cache_dir=None) -> dict:
 
     There is no table to read the dates from: every snapshot's date comes
     straight off its own file name (`DD-MM-YYYY.md`, or `DD-MM-YYYY-N.md` for
-    a same-day repeat), the same rule the id-keyed collections use. A tarball
-    published before the DOF linking left this repository still holds an
-    `indice.json` and a `notas/` folder; neither is read, and neither is a
-    snapshot.
+    a same-day repeat), the same rule the id-keyed collections use. An older copy of a tarball
+    (from before the DOF linking left this repository; no published one) may
+    also hold an `indice.json` and a `notas/` folder; neither is read, and
+    neither is a snapshot.
 
     Reads only that law's own already-cached `<slug>.tgz` asset. Raises
     `AssetNotCached` while it is not on disk under `cache_dir` yet — run
@@ -519,9 +521,10 @@ def iter_current_federal_laws(
 
     The newest snapshot is the one whose file name -- `DD-MM-YYYY.md`, or
     `DD-MM-YYYY-N.md` for a same-day repeat (`scjn.api.descarga_ordenamiento`'s
-    `-N` suffix) -- carries the newest date. A tarball published before the
-    DOF linking left this repository also holds an `indice.json` and a
-    `notas/` folder; they are not snapshots and are ignored.
+    `-N` suffix) -- carries the newest date. An older copy of a tarball
+    (from before the DOF linking left this repository; no published one) may
+    also hold an `indice.json` and a `notas/` folder; they are not snapshots
+    and are ignored.
 
     `fecha_publicacion`, as in a snapshot's file name, is `DD-MM-YYYY`
     (`scjn.header._fecha`'s format), not ISO --
@@ -1252,9 +1255,9 @@ def download_scjn_tratados_assets(
 
 
 # --- `scjn-estatutos` (issue #9): public wrappers over the generic core -----
-# The release is not published yet: until it is, every reader below raises
-# `AssetNotCached` (no network) and `download_scjn_estatutos_assets` finds no
-# release to read.
+# The release was published on 2026-11-17; like every reader, those below read
+# only the cache and raise `AssetNotCached` for what `scjn download` has not put
+# there.
 
 def _assets_scjn_estatutos(timeout: int = 30) -> dict[str, str]:
     """Every asset of the `scjn-estatutos` release, name -> download URL —

@@ -3,7 +3,7 @@
 
 `scjn.release` reads five series: `scjn-leyes`, `scjn-reglamentos`,
 `scjn-lineamientos`, `scjn-tratados` and `scjn-estatutos`. A series the source
-does not have (`scjn-estatutos` is not published yet) is reported and skipped,
+does not have (`scjn-estatutos` was one before its publication on 2026-11-17) is reported and skipped,
 never an error. A release holds at most 1,000 assets,
 so a series is a bare tag plus continuations (`scjn-reglamentos-2`, ...). A move
 of the releases' owner copies every release byte for byte (title, body and each

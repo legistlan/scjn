@@ -10,7 +10,7 @@ number-sections: false
 JSON API (the backend of `legislacion.scjn.gob.mx/consulta`), the writer of
 the Markdown snapshots of an instrument's reforms, and the disk-first reader
 of the five SCJN releases: `scjn-leyes`, `scjn-reglamentos`,
-`scjn-lineamientos`, `scjn-tratados` and `scjn-estatutos` (not published yet). Each snapshot carries a
+`scjn-lineamientos`, `scjn-tratados` and `scjn-estatutos`. Each snapshot carries a
 `fuente: scjn` provenance header.
 :::
 
@@ -30,8 +30,7 @@ note that published it, and that linking lives outside this repository.
 
 `scjn-leyes` (315 federal laws, reform-dated snapshots, keyed by `abrev`) and
 the id-keyed `scjn-reglamentos`, `scjn-lineamientos`, `scjn-tratados` and
-`scjn-estatutos` (keyed by `id_ordenamiento`; the last one is not published
-yet).
+`scjn-estatutos` (keyed by `id_ordenamiento`); all five are published.
 :::
 ::: {.front}
 ### Disk-first readers

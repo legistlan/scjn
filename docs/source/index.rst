@@ -32,7 +32,7 @@ every federal *lineamiento* the SCJN has, on the same id-keyed shape
 (``scjn-lineamientos``); and, since issue #277, every international *treaty*
 the SCJN serves, on that same shape (``scjn-tratados``); and, since issue #9,
 every federal *estatuto* the SCJN classifies ``ESTATUTO``, on that same shape
-(``scjn-estatutos``, **not published yet**). It was extracted out of ``nota2md``'s own
+(``scjn-estatutos``, published on 2026-11-17). It was extracted out of ``nota2md``'s own
 modules (issue #206): Fase 1 (#207) moved the
 transport, the catalogue's own algebra (:py:mod:`scjn.catalog`),
 per-instrument crawl state (:py:mod:`scjn.state`) and the provenance header's
@@ -95,10 +95,9 @@ once and every reader afterwards is offline.
 
 :py:func:`~scjn.release.download_scjn_leyes_index` reads the release's index
 — every law, with its name, its asset, its snapshot count and its
-classification — a few hundred KB against the corpus' 380 MB. A release
-published before the DOF linking left this repository still has a ``codNota``
-section in it; the reader drops it, so this example reads the same whichever
-release is cached:
+classification — a few hundred KB against the corpus' 380 MB. The published
+index has no ``codNota`` section; an older copy (an old cache or a mirror)
+that still has one is read the same way, because the reader drops it:
 
 >>> indice = scjn.download_scjn_leyes_index()
 >>> sorted(indice.keys())
@@ -110,9 +109,10 @@ release is cached:
 
 :py:func:`~scjn.release.download_scjn_leyes_corpus` reads one law's own tarball
 whole — every snapshot as ``archivo``, ``fecha_publicacion`` (read off the
-file name) and ``markdown``, oldest first. A tarball published before the DOF
-linking left this repository also holds an ``indice.json`` and a ``notas/``
-folder; they are not snapshots and are ignored:
+file name) and ``markdown``, oldest first. The published tarball holds the
+snapshots and ``estado.json`` only; an older copy that also holds an
+``indice.json`` and a ``notas/`` folder is read the same way, because they are
+not snapshots and are ignored:
 
 >>> corpus = scjn.download_scjn_leyes_corpus("lfca")
 >>> corpus["slug"]
@@ -160,9 +160,9 @@ classification, the five fields of :py:data:`~scjn.release.CAMPOS_CLASIFICACION`
 ``ambito`` (``FEDERAL``, ``ESTATAL``, ``TRATADOS INTERNACIONALES``), ``pais``
 (the field that tells the instruments of ``scjn-tratados`` apart) and, for a
 state-level instrument, ``estado`` and ``municipio``. The iterators always
-return the five keys, ``None`` where the index has no value — which is
-what an index published before they existed gives for every law, so this
-example does not depend on which release is cached:
+return the five keys, ``None`` where the index has no value (an index older
+than the fields gives ``None`` for every law, and the published one carries
+them wherever the SCJN gives a value):
 
 >>> from scjn.release import CAMPOS_CLASIFICACION, construye_indice_global
 >>> sorted(CAMPOS_CLASIFICACION)
@@ -402,24 +402,14 @@ says an id has no asset does :py:func:`~scjn.release.download_scjn_lineamientos_
 raise :py:exc:`~scjn.release.SinTextoEnSCJN` instead of reaching for a tarball that
 does not exist.
 
-**Not yet live**, unlike ``scjn-reglamentos`` above — issue #222 generated
-this collection's publish plan (``PUBLICAR.md``) but a human has not run it
-yet (issue #115, Hallazgo C: publishing is never automated), so there is no
-``scjn-lineamientos`` release on GitHub for a doctest here to download from.
-A live example the same shape as ``scjn-reglamentos``' own (an actual
-``download_scjn_lineamientos_assets``/``_index``/``_corpus``/
-``local_lineamientos_ids`` walk against a real ``id_ordenamiento``) belongs
-here as a follow-up, once the release is published — until then this
-behaviour is verified by ``tests/test_release.py``'s
-``TestScjnLineamientos`` class against a synthetic on-disk release, the same
-posture :py:mod:`scjn.api` takes toward the live SCJN below.
-
-:py:func:`~scjn.release.iter_current_lineamientos` (issue #227) falls under that same
-exception, and for the same reason: it is the exact wrapper
-:py:func:`~scjn.release.iter_current_reglamentos` is — both are four lines over
-:py:func:`~scjn.release._iter_current_de_release`, documented with a live
-example above — over a release that is not published yet.
-``TestIterCurrentPorId`` covers it against a synthetic on-disk release.
+The release is published (a human ran the publish plan, ``PUBLICAR.md``, as
+issue #115, Hallazgo C requires: publishing is never automated). Its wrappers,
+:py:func:`~scjn.release.iter_current_lineamientos` (issue #227) included, are the
+exact siblings of the ``scjn-reglamentos`` ones documented with live examples
+above; this page keeps the live walk for ``scjn-reglamentos`` and for
+``scjn-estatutos`` below, and ``tests/test_release.py`` verifies the
+lineamientos wrappers (``TestScjnLineamientos``, ``TestIterCurrentPorId``)
+against a synthetic on-disk release.
 
 ``scjn-tratados`` — the fourth collection (issue #277)
 ------------------------------------------------------------
@@ -470,12 +460,10 @@ are the exact wrappers their reglamentos siblings are, over the same generic
 core and the same :py:exc:`~scjn.release.AssetNotCached`/:py:exc:`~scjn.release.SinTextoEnSCJN`
 raise order.
 
-**Not yet live**, same posture as ``scjn-lineamientos`` above: issue #277
-crawled and packaged the corpus and generated its publish plan
-(``PUBLICAR.md``), but a human has not run it (issue #115, Hallazgo C), so
-there is no ``scjn-tratados`` release on GitHub for a doctest here to
-download from. ``tests/test_release.py``'s ``TestScjnTratados``
-class verifies the behaviour against a synthetic on-disk release instead.
+The release is published (two tags, ``scjn-tratados`` and ``scjn-tratados-2``),
+and, like ``scjn-lineamientos`` above, its wrappers are verified by
+``tests/test_release.py``'s ``TestScjnTratados`` class against a synthetic
+on-disk release rather than by a live walk.
 
 ``scjn-estatutos`` — the fifth collection (issue #9)
 ------------------------------------------------------------
@@ -487,8 +475,15 @@ on the same id-keyed path as ``scjn-lineamientos`` above: no ``abrev``, no
 rescue (``categoriaOrdenamiento == "ESTATUTO"`` or any reform row with
 ``categoriaReforma == "ESTATUTO"``), decided by
 ``scripts/discover_federal_estatutos.py``, which lists candidates and writes
-nothing. **The ``scjn-estatutos`` release is not published yet**: no one has
-discovered, crawled, packaged or published the corpus.
+nothing. The release was published on 2026-11-17: 379 instruments, 377 with
+text, 1,139 snapshots. Two are indexed with no or incomplete snapshots because
+the SCJN serves a reform with a missing block that the completeness guard
+refuses (``178398`` has none, ``111330`` has 4 of its 5 reforms).
+
+The examples below read ``111330`` (the *Estatuto del Servicio Profesional
+Electoral Nacional y del Personal de la Rama Administrativa*), a small
+instrument with text, which the doctest job puts in the cache the way it does
+``lfca`` and ``104906`` (``scjn download --coleccion estatutos --id 111330``).
 
 :py:func:`~scjn.release.construye_indice_global_estatutos` needs no cache, so it
 has a live example; its entries carry the classification fields
@@ -508,21 +503,57 @@ has a live example; its entries carry the classification fields
 >>> "asset" in indice["instrumentos"]["5002"]
 False
 
-:py:func:`~scjn.release.download_scjn_estatutos_index`,
-:py:func:`~scjn.release.download_scjn_estatutos_corpus`,
-:py:func:`~scjn.release.download_scjn_estatutos_assets`,
-:py:func:`~scjn.release.local_estatutos_ids` and
-:py:func:`~scjn.release.iter_current_estatutos` are the exact wrappers their
-``lineamientos`` siblings are, over the same generic core and the same
-:py:exc:`~scjn.release.AssetNotCached`/:py:exc:`~scjn.release.SinTextoEnSCJN` raise
-order. They fall under the written exception of this page, like the
-``lineamientos`` and ``tratados`` ones: there is no ``scjn-estatutos`` release on
-GitHub, so no asset to cache and no doctest can read one, and the behaviour is
-verified by ``tests/test_release.py`` (``TestIdKeyedWrappers``, which runs once per
-collection of :py:data:`~scjn.cache.COLECCIONES_POR_ID`, ``estatutos`` included)
-against a synthetic on-disk release. With nothing cached every one of them
-raises :py:exc:`~scjn.release.AssetNotCached` (an id named explicitly) or yields
-nothing (``iter_current_estatutos`` over an empty cache) without a request.
+:py:func:`~scjn.release.download_scjn_estatutos_assets` is the only one of these
+readers that talks to the network (and, through it, ``scjn download
+--coleccion estatutos``); it resolves the release's series and puts the index
+and the instrument's tarball in the cache:
+
+>>> resultados = release.download_scjn_estatutos_assets(["111330"])
+>>> sorted(ruta.name for ruta, _ in resultados)
+['111330.tgz', 'indice-global.json.gz']
+
+:py:func:`~scjn.release.download_scjn_estatutos_index` reads the index, keyed by
+``id_ordenamiento``, with the classification of each instrument:
+
+>>> indice = release.download_scjn_estatutos_index()
+>>> indice["coleccion"]
+'estatutos'
+>>> entrada = indice["instrumentos"]["111330"]
+>>> entrada["asset"], entrada["snapshots"]
+('111330.tgz', 4)
+>>> entrada["categoria_ordenamiento"], entrada["ambito"], entrada["pais"]
+('ESTATUTO', 'FEDERAL', 'MÉXICO')
+
+:py:func:`~scjn.release.download_scjn_estatutos_corpus` reads the instrument back,
+oldest snapshot first, each with its provenance header:
+
+>>> corpus = release.download_scjn_estatutos_corpus("111330")
+>>> [s["archivo"] for s in corpus["snapshots"]]
+['09-06-2016.md', '10-11-2016.md', '01-09-2017.md', '23-07-2020.md']
+>>> corpus["snapshots"][0]["markdown"].splitlines()[:2]
+['---', 'fuente: scjn']
+
+:py:func:`~scjn.release.local_estatutos_ids` is the disk-first "what does this
+machine have", with no request:
+
+>>> "111330" in release.local_estatutos_ids()
+True
+
+:py:func:`~scjn.release.iter_current_estatutos` yields the newest snapshot of each
+instrument, with the classification keys always present (``None`` for a
+value the index lacks, as ``estado`` and ``municipio`` here):
+
+>>> [estatuto] = list(scjn.iter_current_estatutos(["111330"]))
+>>> estatuto["archivo"], estatuto["vigencia"]
+('23-07-2020.md', 'ABROGADO (A)')
+>>> estatuto["estado"], estatuto["municipio"]
+(None, None)
+
+An instrument that is not cached raises :py:exc:`~scjn.release.AssetNotCached`
+(an id the index says has no text raises :py:exc:`~scjn.release.SinTextoEnSCJN`);
+``tests/test_release.py`` (``TestIdKeyedWrappers``, which runs once per
+collection of :py:data:`~scjn.cache.COLECCIONES_POR_ID`, ``estatutos``
+included) verifies both against a synthetic on-disk release.
 
 .. automodule:: scjn.release
    :members:
@@ -909,8 +940,7 @@ reimplementing it:
 
 ``--coleccion {leyes,reglamentos,lineamientos,tratados,estatutos}`` (default ``leyes``;
 issue #220 added ``reglamentos``, issue #222 added ``lineamientos``, issue
-#277 added ``tratados``, issue #9 added ``estatutos``, whose release is not
-published yet) picks which release; ``--id`` replaces ``--slug``
+#277 added ``tratados``, issue #9 added ``estatutos``) picks which release; ``--id`` replaces ``--slug``
 for any id-keyed collection, since all are keyed by ``id_ordenamiento`` rather than by a slug:
 
 .. code-block:: console
@@ -919,6 +949,11 @@ for any id-keyed collection, since all are keyed by ``id_ordenamiento`` rather t
    [1/2] indice-global.json.gz: downloaded
    [2/2] 104906.tgz: downloaded
    scjn-reglamentos: 2 assets in /home/user/.cache/scjn/scjn-reglamentos (2 downloaded, 0 already cached) (2 partes)
+
+   $ scjn download --coleccion estatutos --id 111330
+   [1/2] indice-global.json.gz: downloaded
+   [2/2] 111330.tgz: downloaded
+   scjn-estatutos: 2 assets in /home/user/.cache/scjn/scjn-estatutos (2 downloaded, 0 already cached)
 
 Since issue #222's Fase 0, this is dispatched through
 :py:data:`~scjn.cache.COLECCIONES_POR_ID` rather than a hand-written

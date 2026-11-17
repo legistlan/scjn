@@ -51,8 +51,8 @@ gh release upload scjn-leyes indice-global.json.gz --repo legistlan/scjn --clobb
 ```
 
 `scjn-estatutos` (the federal instruments the SCJN classifies `ESTATUTO`, 379 at the
-audit of 13 November 2026) is crawled the same way as the other id-keyed collections, but
-it is **not published yet**: its discovery, crawl and publication are still a human's to run.
+audit of 13 November 2026) is crawled the same way as the other id-keyed collections, and was published on
+2026-11-17 (379 instruments, 377 with text); publishing remains a human's step.
 
 No script imports `dofjson` or `nota2md` (see [Install](install.qmd)): the
 repository and its releases hold SCJN data only.

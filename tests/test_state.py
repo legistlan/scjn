@@ -21,17 +21,17 @@ class TestEstadoPorInstrumento(unittest.TestCase):
 
     def test_escribe_estado_fusiona_en_vez_de_sobrescribir(self):
         # fetch_scjn_legislacion.py escribe actualizado/rastreado y
-        # enlaza_scjn_legislacion.py enlazado: ninguno borra al otro.
+        # backfill_scjn_classification.py la clasificacion: ninguno borra al otro.
         with tempfile.TemporaryDirectory() as tmp:
             destino = Path(tmp)
             state.escribe_estado(destino, actualizado="2026-06-09", rastreado="2026-08-27")
-            state.escribe_estado(destino, enlazado="2026-08-28")
+            state.escribe_estado(destino, ambito="FEDERAL")
             self.assertEqual(
                 state.lee_estado(destino),
                 {
                     "actualizado": "2026-06-09",
                     "rastreado": "2026-08-27",
-                    "enlazado": "2026-08-28",
+                    "ambito": "FEDERAL",
                 },
             )
 
@@ -44,7 +44,7 @@ class TestEstadoPorInstrumento(unittest.TestCase):
 
     def test_pendiente_sin_actualizado_en_el_catalogo(self):
         # lisipl/lcmopfih/lfcpq: nada los fecha (ni la tabla de reformas de
-        # la SCJN ni los titulos del DOF), asi que no hay forma de saber si
+        # la SCJN), asi que no hay forma de saber si
         # cambiaron.
         with tempfile.TemporaryDirectory() as tmp:
             destino = Path(tmp)

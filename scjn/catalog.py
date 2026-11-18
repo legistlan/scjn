@@ -11,7 +11,6 @@ copy.
 """
 
 import re
-from datetime import datetime
 from pathlib import Path
 
 from scjn.text import _normaliza
@@ -60,10 +59,9 @@ def slug_instrumento(entrada: dict) -> str:
 # merge-not-overwrite already carries forward across every later write, and
 # which `fetch_scjn_legislacion.py` searches with in place of `nombre`.
 #
-# instrument_up_to_date/iso_date_from_note are Mecanismo 2: an `actualizado`
-# field (the ISO date of an instrument's own most recent reform — since
-# issue #186 the newest of the SCJN's reform table and the DOF's own titles,
-# `newest_dof_publication_dates`) that lets a refresh run skip
+# instrument_up_to_date is Mecanismo 2: an `actualizado` field (the ISO date
+# of an instrument's own most recent reform, as the SCJN's reform table says)
+# that lets a refresh run skip
 # re-searching the SCJN for an instrument nothing has changed on since the
 # collection's own last full crawl. This is the safety net for a case like
 # `lfca`: nothing needs to be typed by hand — a brand-new law's `actualizado`
@@ -74,21 +72,9 @@ def slug_instrumento(entrada: dict) -> str:
 def search_name(entry: dict) -> str:
     """The string to actually search the SCJN with for one catalogue entry:
     its manual `nombre_scjn` override when present, the catalogue's own
-    `nombre` otherwise. `nombre` itself is never touched by this — it stays what
-    `enlaza_por_titulo`/`title_candidates_por_fecha` compare against DOF
-    titles (issue #126), and what a caller shows in its own progress
-    output; only the string handed to `buscar` changes."""
+    `nombre` otherwise. `nombre` itself is never touched by this — it stays what a caller shows in
+    its own progress output; only the string handed to `buscar` changes."""
     return entry.get("nombre_scjn") or entry["nombre"]
-
-
-def iso_date_from_note(note: dict) -> str | None:
-    """`note`'s own `fecha` (`DD-MM-YYYY`, the shape a DOF note record's
-    own `fecha` field takes) as ISO `YYYY-MM-DD`, or None when `note` carries
-    no `fecha` at all."""
-    fecha = note.get("fecha")
-    if not fecha:
-        return None
-    return datetime.strptime(fecha, "%d-%m-%Y").date().isoformat()
 
 
 def instrument_up_to_date(directory: Path, updated: str | None, corpus_date: str | None) -> bool:

@@ -138,6 +138,12 @@ def _limpia_resaltado(texto: str | None) -> str:
     return _EM.sub("", texto or "").strip()
 
 
+def _texto_o_none(valor) -> str | None:
+    """A text field of a search hit, stripped: an empty or missing value is
+    `None` (the SCJN sends `""` and `null` for the same "nothing")."""
+    return (valor or "").strip() or None
+
+
 def _fecha(cadena: str | None) -> str | None:
     """`22/05/2026 00:00:00` -> `22-05-2026`, the form `_cabecera` writes and
     a snapshot file is named after."""
@@ -165,6 +171,13 @@ class Ordenamiento:
     #: anything on a `Reforma` row -- which is what makes the three of them
     #: one record per law rather than one per snapshot.
     resumen: str | None = None
+    #: Where the instrument comes from, as the SCJN classifies it. `pais` is the
+    #: country (the one field that tells the instruments of `scjn-tratados`
+    #: apart); `estado` and `municipio` are those of a state-level instrument.
+    #: An empty or missing value is `None` (issue #8).
+    pais: str | None = None
+    estado: str | None = None
+    municipio: str | None = None
     fechaPublicado: str | None = None
     # Filled in by candidate selection, the same way the retired `scjn.Candidato` did.
     ratio: float | None = None
@@ -312,6 +325,9 @@ class ScjnApi:
                 categoriaOrdenamiento=r.get("categoriaOrdenamiento"),
                 materia=r.get("materia"),
                 resumen=(r.get("resumen") or "").strip() or None,
+                pais=_texto_o_none(r.get("pais")),
+                estado=_texto_o_none(r.get("estado")),
+                municipio=_texto_o_none(r.get("municipio")),
                 fechaPublicado=_fecha(r.get("fechaPublicado")),
             )
             for r in (datos.get("resultados") or [])

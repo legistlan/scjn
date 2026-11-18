@@ -40,16 +40,8 @@ pytest tests scripts/tests --ignore=tests/test_api_red.py --ignore=tests/test_re
 The two ignored files make real network calls (the live SCOW API and the real
 releases); CI runs them in their own `network` job.
 
-## The scripts' dependency group
+## The scripts
 
-Three of the crawl scripts (`discover_federal_laws.py`,
-`fetch_scjn_legislacion.py` and `recrawl_scjn_outline.py`) link laws to the DOF
-and import `dofjson` and `nota2md` from PyPI, never the package itself:
-
-```bash
-uv sync --group scripts
-# or
-pip install dofjson nota2md
-```
-
+The crawl scripts run from a clone with the package's own dependencies: none of
+them imports `dofjson` or `nota2md`, and there is no extra dependency group.
 See [Crawl](crawl.qmd) for what each script does.

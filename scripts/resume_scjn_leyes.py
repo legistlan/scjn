@@ -14,12 +14,11 @@ this script after a crawl.
     ./scripts/resume_scjn_leyes.py --outdir scripts/scjn \\
         --destino website/pages/data/scjn-leyes-summary.json
 
-Nothing here re-crawls the SCJN, re-links a codNota or touches the corpus: it
-only reads each instrument's own snapshot headers and `indice.json`, exactly
-as `empaqueta_scjn_leyes.py` does for `MANIFEST.md` — whose per-instrument
-summary (`resume_coleccion`) is reused directly instead of recomputed, so the
-page and the manifest can never disagree about an instrument's confidence
-classification or link percentage.
+Nothing here re-crawls the SCJN or touches the corpus: it only reads each
+instrument's own snapshot headers, exactly as `empaqueta_scjn_leyes.py` does
+for `MANIFEST.md` — whose per-instrument summary (`resume_coleccion`) is
+reused directly instead of recomputed, so the page and the manifest can never
+disagree about an instrument's snapshot count.
 """
 
 import argparse
@@ -51,10 +50,7 @@ _spec.loader.exec_module(_empaqueta)
 def _fuentes_por_instrumento(directorio: Path) -> Counter:
     """How many of an instrument's snapshots came from each source, read from
     the `fuente:` line of each file's own provenance header. The header is
-    authoritative here rather than `indice.json`'s optional `fuente` field:
-    `fetch_lfiiedb_dof.py` writes the header but not the index field, and
-    `enlaza_scjn_legislacion.py` never writes the field at all (absent means
-    `scjn`)."""
+    authoritative here (absent means `scjn`)."""
     fuentes = Counter()
     for version in versiones_de_directorio(directorio):
         fuentes[lee_cabecera(version.archivo).get("fuente", "scjn")] += 1
@@ -71,20 +67,9 @@ def resume(outdir: Path) -> dict:
     resumenes, nunca_rastreados = _empaqueta.resume_coleccion(outdir)
 
     por_anio = Counter()
-    # Snapshots neither signal could tie to a codNota, by year: the page reads
-    # this to say *where* the unidentified ones sit instead of assuming they are
-    # the oldest — they are not.
-    sin_identificar_por_anio = Counter()
-    estados = Counter()
     fuentes_totales = Counter()
-    # (title_link_status, content diff confirmed?) -> snapshots. This is what
-    # shows how much the second signal adds over the first: an `ambiguous`
-    # snapshot the diff confirms is a date the title alone could not resolve.
-    estado_por_confirmacion = Counter()
     instrumentos = []
     snapshots_totales = 0
-    enlazados_titulo = 0
-    confirmados_contenido = 0
 
     for entrada in catalogo:
         slug = slug_instrumento(entrada)
@@ -94,39 +79,20 @@ def resume(outdir: Path) -> dict:
         fuentes = _fuentes_por_instrumento(directorio)
         fuentes_totales.update(fuentes)
 
-        indice_path = directorio / "indice.json"
-        indice = (
-            json.loads(indice_path.read_text(encoding="utf-8"))
-            if indice_path.is_file()
-            else []
-        )
-        enlazados = 0
-        confirmados = 0
-        for e in indice:
-            anio = int(e["fecha_publicacion"].split("-")[-1])
-            por_anio[anio] += 1
-            estado = e.get("title_link_status")
-            confirmado = e.get("content_diff_confirmed_codNota") is not None
-            estados[estado] += 1
-            estado_por_confirmacion[f"{estado}|{'confirmed' if confirmado else 'unconfirmed'}"] += 1
-            enlazados += e.get("codNota") is not None
-            confirmados += confirmado
-            if e.get("codNota") is None and not confirmado:
-                sin_identificar_por_anio[anio] += 1
+        anios = [
+            int(v.fecha_publicacion.split("-")[-1]) for v in versiones_de_directorio(directorio)
+        ]
+        por_anio.update(anios)
 
         snapshots_totales += sum(fuentes.values())
-        enlazados_titulo += enlazados
-        confirmados_contenido += confirmados
         instrumentos.append(
             {
                 "slug": slug,
                 "nombre": entrada["nombre"],
                 "snapshots": sum(fuentes.values()),
-                "linked": enlazados,
-                "diff_confirmed": confirmados,
                 "fuentes": dict(sorted(fuentes.items())),
-                "first_year": min((int(e["fecha_publicacion"].split("-")[-1]) for e in indice), default=None),
-                "last_year": max((int(e["fecha_publicacion"].split("-")[-1]) for e in indice), default=None),
+                "first_year": min(anios, default=None),
+                "last_year": max(anios, default=None),
             }
         )
 
@@ -136,15 +102,8 @@ def resume(outdir: Path) -> dict:
         "instruments_with_directory": len(instrumentos),
         "never_crawled": nunca_rastreados,
         "snapshots": snapshots_totales,
-        "linked_by_title": enlazados_titulo,
-        "content_diff_confirmed": confirmados_contenido,
-        "title_link_status": dict(estados),
-        "title_link_status_by_confirmation": dict(estado_por_confirmacion),
         "snapshots_by_source": dict(sorted(fuentes_totales.items())),
         "snapshots_per_year": {str(a): n for a, n in sorted(por_anio.items())},
-        "unidentified_per_year": {
-            str(a): n for a, n in sorted(sin_identificar_por_anio.items())
-        },
         "instruments": sorted(instrumentos, key=lambda r: -r["snapshots"]),
     }
 
@@ -165,8 +124,7 @@ def main() -> None:
     )
     print(
         f"{args.destino}: {resumen['instruments_with_directory']} instrumentos, "
-        f"{resumen['snapshots']} snapshots, "
-        f"{resumen['linked_by_title']} enlazados por título"
+        f"{resumen['snapshots']} snapshots"
     )
 
 

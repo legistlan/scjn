@@ -2,19 +2,40 @@
 title: "Releases"
 ---
 
-The data is never committed to the repository: the corpora live in four
-GitHub releases.
+The data is never committed to the repository: the corpora live in five
+GitHub releases, all of them published (seven tags, since a release holds at most 1,000 assets
+and `scjn-reglamentos` and `scjn-tratados` continue in a `-2`).
 
 | Release | Content | Keyed by |
 |---|---|---|
-| `scjn-leyes` | 315 federal laws, reform-dated snapshots | `abrev` (the slug) |
-| `scjn-reglamentos` | federal *reglamentos* | `id_ordenamiento` |
-| `scjn-lineamientos` | federal *lineamientos* | `id_ordenamiento` |
-| `scjn-tratados` | international treaties | `id_ordenamiento` |
+| `scjn-leyes` | 315 federal laws, 3,709 reform-dated snapshots | `abrev` (the slug) |
+| `scjn-reglamentos` | federal *reglamentos*: 1,087 instruments, 1,083 with text | `id_ordenamiento` |
+| `scjn-lineamientos` | federal *lineamientos*: 163 instruments, 126 with text | `id_ordenamiento` |
+| `scjn-tratados` | international treaties: 1,455 instruments, 1,373 with text | `id_ordenamiento` |
+| `scjn-estatutos` | federal *estatutos* (the SCJN's category `ESTATUTO`): 379 instruments, 377 with text, 1,139 snapshots | `id_ordenamiento` |
 
-Each release carries an index plus one tarball per instrument. An instrument
+(Counts as published on 2026-11-17.) Two estatutos are indexed with no or incomplete
+snapshots because the SCJN serves one of their reforms with a missing block that the
+completeness guard refuses: `178398` has none and `111330` has 4 of its 5 reforms.
+
+Each release carries an index plus one tarball per instrument. In `scjn-leyes`
+each tarball's `estado.json` has the law's `actualizado`, the date of the newest
+reform the SCJN serves for it (`actualizado_scjn`, or the date of the law's
+newest snapshot when that is absent), never a DOF date. An instrument
 with no consolidated text is indexed with `snapshots: 0` and has no tarball;
 reading it raises `SinTextoEnSCJN`.
+
+## What an index carries
+
+Per instrument, the index records the SCJN's own `nombre`, the tarball (`asset`) and
+the number of `snapshots`, plus the SCJN's classification, one value per
+instrument rather than per reform: `materia`, `vigencia`, `resumen` and, since
+version 0.5.2, `categoria_ordenamiento` (`LEY`, `CODIGO`, `REGLAMENTO`, ...),
+`ambito` (`FEDERAL`, `ESTATAL`, `TRATADOS INTERNACIONALES`), `pais` (the field that
+tells the treaties apart) and, for a state-level instrument, `estado` and
+`municipio`. A field the SCJN gives no value for is absent from the index, and the
+readers return `None` for it; an index older than a field has no key for it
+(every published index carries the classification wherever the SCJN gives it). The classification is not in a snapshot's provenance header.
 
 ## A release is a series
 
@@ -25,7 +46,7 @@ probes `-1`, `-2`, ... until one answers 404.
 
 ## Where the releases live
 
-The four releases live in this repository,
+The releases live in this repository,
 [`legistlan/scjn`](https://github.com/legistlan/scjn/releases), and that is the
 repository `scjn.release.release_repository()` names by default.
 Set the environment variable `SCJN_RELEASE_REPOSITORY` (`<owner>/<name>`) to

@@ -12,7 +12,7 @@ verbatim and only replaces what follows it. A reform the SCJN published since
 the last crawl is new: it gets a header of its own.
 
 It follows issue #255's procedure -- the latest answer of the SCJN, every
-snapshot, `estado.json`/`indice.json`/`notas/` never touched, no
+snapshot, `estado.json` never touched, no
 `--reintenta` -- with one safeguard `fetch_scjn_legislacion.py` does not
 need: an instrument is first crawled into a staging directory and swapped in
 only when **every snapshot already on disk came back**. A transient failure
@@ -44,8 +44,6 @@ import sys
 import time
 from pathlib import Path
 
-# `fetch_scjn_legislacion` (beside this script) imports `dofjson` and `nota2md`,
-# which come from PyPI (`pip install dofjson nota2md`, or `uv sync --group scripts`).
 _RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_RAIZ / "scripts"))
 sys.path.insert(0, str(_RAIZ))

@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""Copy the four SCJN release series of one repository into another, once.
+"""Copy the SCJN release series of one repository into another, once.
 
-`scjn.release` reads four series: `scjn-leyes`, `scjn-reglamentos`,
-`scjn-lineamientos` and `scjn-tratados`. A release holds at most 1,000 assets,
+`scjn.release` reads five series: `scjn-leyes`, `scjn-reglamentos`,
+`scjn-lineamientos`, `scjn-tratados` and `scjn-estatutos`. A series the source
+does not have (`scjn-estatutos` was one before its publication on 2026-11-17) is reported and skipped,
+never an error. A release holds at most 1,000 assets,
 so a series is a bare tag plus continuations (`scjn-reglamentos-2`, ...). A move
 of the releases' owner copies every release byte for byte (title, body and each
 asset) instead of re-crawling the SCJN, which takes days and would not
@@ -33,7 +35,7 @@ import time
 import urllib.parse
 from pathlib import Path
 
-BASES = ("scjn-leyes", "scjn-reglamentos", "scjn-lineamientos", "scjn-tratados")
+BASES = ("scjn-leyes", "scjn-reglamentos", "scjn-lineamientos", "scjn-tratados", "scjn-estatutos")
 DEFAULT_DESTINATION = "legistlan/scjn"
 #: The tag whose release is marked "latest": the corpus the package is named for.
 LATEST_TAG = "scjn-leyes"
@@ -297,7 +299,9 @@ def main(argv=None) -> int:
     if args.batch < 1:
         p.error("--batch must be at least 1")
 
-    found = [t for base in BASES for t in series_tags(args.source, base)]
+    series = {base: series_tags(args.source, base) for base in BASES}
+    found = [t for base in BASES for t in series[base]]
+    absent = [base for base in BASES if not series[base]]
     if not found:
         sys.exit(f"{args.source} has none of the releases {', '.join(BASES)}")
     unknown = [t for t in args.tag if t not in found]
@@ -305,6 +309,8 @@ def main(argv=None) -> int:
         sys.exit(f"{args.source} has no release {', '.join(unknown)}; it has {', '.join(found)}")
     tags = [t for t in found if not args.tag or t in args.tag]
     print(f"tags in {args.source}: {', '.join(found)}", flush=True)
+    if absent:
+        print(f"not in {args.source} (skipped): {', '.join(absent)}", flush=True)
     print(f"copying to {args.destination}: {', '.join(tags)}", flush=True)
 
     outdir = Path(args.outdir)

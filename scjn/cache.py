@@ -63,6 +63,12 @@ _SCJN_LINEAMIENTOS_RELEASE = "scjn-lineamientos"
 #: `scjn-reglamentos` (issue #223).
 _SCJN_TRATADOS_RELEASE = "scjn-tratados"
 
+#: The subdirectory every `scjn-estatutos` asset lives under -- the fifth
+#: id-keyed collection (issue #9): the federal instruments the SCJN classifies
+#: `ESTATUTO` (organic statutes of federal bodies, agencies and universities).
+#: Published on 2026-11-17 (379 instruments).
+_SCJN_ESTATUTOS_RELEASE = "scjn-estatutos"
+
 
 @dataclass(frozen=True)
 class Coleccion:
@@ -72,7 +78,7 @@ class Coleccion:
     defensible cost, three were not).
 
     `nombre` is the collection's own name (`"reglamentos"`, `"lineamientos"`,
-    `"tratados"`)
+    `"tratados"`, `"estatutos"`)
     -- what a caller passes to `scjn download --coleccion` and what a
     published index's own `coleccion` field carries. `tag_base` is part 1 of
     its release-tag series (issue #223: `_tag_de_parte`/`_assets_de_partes`
@@ -87,11 +93,10 @@ class Coleccion:
     Deliberately **not** the four-collection registry issue #189 deleted:
     this carries only what every id-keyed collection's shared path actually
     needs (a name and where its assets live), never a per-collection
-    behaviour flag. `leyes` has its own `abrev`/`actualizado`/`indice.json`/
-    `notas/`/codNota-reverse-index path and is not, and will not be,
+    behaviour flag. `leyes` has its own `abrev`/`actualizado` path and is not, and will not be,
     described by this class -- growing it to cover `leyes` too is the sign
     this abstraction went too far. That includes *how membership is decided*:
-    `reglamentos`/`lineamientos` are members by the SCJN's own category,
+    `reglamentos`/`lineamientos`/`estatutos` are members by the SCJN's own category,
     `tratados` (issue #277) by its ámbito (`TRATADOS INTERNACIONALES`) --
     a fact of that collection's discovery script, carried by no field here.
     """
@@ -116,6 +121,12 @@ TRATADOS = Coleccion(
     nombre="tratados", tag_base=_SCJN_TRATADOS_RELEASE, subdirectorio=_SCJN_TRATADOS_RELEASE
 )
 
+#: `estatutos`, keyed by `id_ordenamiento` (issue #9): the SCJN's category
+#: `ESTATUTO`, federal ambito.
+ESTATUTOS = Coleccion(
+    nombre="estatutos", tag_base=_SCJN_ESTATUTOS_RELEASE, subdirectorio=_SCJN_ESTATUTOS_RELEASE
+)
+
 #: Every id-keyed collection, by its own `nombre` -- read by `scjn.cli`/
 #: `scripts/fetch_scjn_legislacion.py`/`scripts/empaqueta_scjn_coleccion.py`
 #: to dispatch `--coleccion` to the right `Coleccion` without a third
@@ -126,6 +137,7 @@ COLECCIONES_POR_ID: dict[str, Coleccion] = {
     REGLAMENTOS.nombre: REGLAMENTOS,
     LINEAMIENTOS.nombre: LINEAMIENTOS,
     TRATADOS.nombre: TRATADOS,
+    ESTATUTOS.nombre: ESTATUTOS,
 }
 
 #: Asset names `migrate_legacy_assets` moves verbatim -- everything except a

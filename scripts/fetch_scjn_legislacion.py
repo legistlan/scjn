@@ -59,16 +59,15 @@ crawl saved, the wrong document entirely — candidate selection gained guards
 against this, but the wrong snapshots already on disk are still there,
 untouched, since the per-file skip above has no notion of a snapshot being
 *wrong*. ``--reintenta SLUG`` (repeatable, `scjn.catalog.slug_instrumento`)
-re-bajas exactly the named instrumentos: their existing snapshots (and
-stale `indice.json`) are deleted first so they are genuinely re-fetched
+re-bajas exactly the named instrumentos: their existing snapshots are
+deleted first so they are genuinely re-fetched
 against the fixed candidate selection, while every instrumento not named is
 skipped without touching the SCJN at all — a full collection is ~600
 instrumentos, and there is no need to re-walk the other ~595 that were never
 wrong just to verify a fix aimed at 5. Leaves the collection's own
 ``.progreso.json`` checkpoint untouched either way. Rate-limited:
 `--espera` seconds between requests, since this is an unofficial site with
-no stability contract (the same posture `dofjson.dofweb` takes toward the
-DOF's own website).
+no stability contract.
 
 Issue #253 fixed how ``scjn.api.articulos_a_markdown`` recovers a table
 wrapped over several tab-separated lines, but the raw `contenido` the API
@@ -82,7 +81,7 @@ lgvs lgn lspm liva lce lfda loapf cpf lbio`` (``scjn-reglamentos``/
 ``scjn-lineamientos`` were not measured, though they are written by the same
 `scjn.api.snapshot` and inherit the fix). **Not** a ``--reintenta`` case,
 even though it names slugs the same way: ``--reintenta`` deletes
-``estado.json``/``indice.json`` and re-searches every named instrumento
+``estado.json`` and re-searches every named instrumento
 without its recorded ``id_ordenamiento`` — issue #115's wrong-document path,
 for a job that already knows exactly which document it means. A first
 attempt (issue #255) re-converted a snapshot in place and kept the rewrite
@@ -94,7 +93,7 @@ The repository owner replaced it (a review fix on #255):
 ``scripts/find_scjn_table_instruments.py`` probes each instrument's
 *latest* version only for a tab, and an instrument it flags gets **all**
 of its snapshots re-downloaded from scratch — delete its ``*.md`` files,
-keep ``estado.json``/``indice.json``/``notas/``, then this script's own
+keep ``estado.json``, then this script's own
 ``--instrumento <key>`` (never ``--reintenta``) — which also picks up any
 reform published since the last crawl, on purpose. See that script's own
 docstring. Repackaging only the selected instruments is still
@@ -102,11 +101,6 @@ docstring. Repackaging only the selected instruments is still
 ``scripts/empaqueta_scjn_coleccion.py --coleccion <c> --instrumento <id>``,
 a human step same as any other publish (issue #115, Hallazgo C) — its
 ``MANIFEST.md`` then lists exactly the rewritten instrumentos for review.
-The downstream `nota2md` package's own derived cache
-(``<CACHE_DIR>/scjn-leyes/md/<slug>-<archivo>.md``) is keyed by file name and
-reused when present, so it goes stale for a rewritten law until it is
-deleted or `nota2md.legal_provisions`/`reconstruct_legal_provisions` are
-called with `refrescar=True`.
 
 A fourth case, issue #124's follow-up ("Dos casos disparadores"): an
 instrumento the coverage sweep above never finds *anything* for at all,
@@ -119,9 +113,8 @@ this script's own `refresca_catalogo()` writes into each law's own
 
 - **Mecanismo 1** (manual override): when a catalogue entry carries a
   `nombre_scjn` field, it is searched instead of `nombre`
-  (`scjn.catalog.search_name`) — `nombre` itself is still what gets printed
-  and what `enlaza_scjn_legislacion.py` (issue #126) compares against DOF
-  titles. Applied so far only to `lisipl`; `lfca`'s own gap is indexing
+  (`scjn.catalog.search_name`) — `nombre` itself is still what gets printed.
+  Applied so far only to `lisipl`; `lfca`'s own gap is indexing
   lag, not a title mismatch, so no override was correct for it — and the
   API has since indexed the law, which is what actually closed the case.
 - **Mecanismo 2** (incremental refresh): once a collection has been crawled
@@ -195,19 +188,17 @@ two additions and no change to what a plain full sweep does:
   work list unless ``--incluye-sin-actualizado`` says so — the ones nothing
   dates at all. It also prints the date `refresca_catalogo()` last ran,
   since `actualizado` comes from it, so an empty list reads as "up to date
-  as of *that* date", not "up to date with today's DOF". It refreshes
+  as of *that* date". It refreshes
   first, since planning against a stale `actualizado` answers a stale
   question (``--sin-refrescar-catalogo`` opts out).
 - ``--actualiza`` runs the whole chain for exactly the instrumentos that plan
-  lists: crawl, link (`enlaza_scjn_legislacion.py`), and repackage their
-  assets (`empaqueta_scjn_leyes.py`). It recomputes the plan itself, so
+  lists: crawl, then repackage their assets (`empaqueta_scjn_leyes.py`).
+  It recomputes the plan itself, so
   there is nothing to copy between the two commands, and it exits with no
   effects at all when nothing is pending — the expected case most of the
   time. One law failing does not stop the rest: its `estado.json` is left
   untouched so the next plan lists it again, and the run ends with a summary
-  and a non-zero exit status. The DOF titles the linking step needs are
-  streamed from the notas-archivo cache (``nota2md download gazette-metadata``
-  populates it; ``--cache-dir`` points at your own directory).
+  and a non-zero exit status.
 - ``--instrumento SLUG`` (repeatable) crawls only the named instrumentos and
   touches the SCJN for nothing else — the manual escape hatch for one
   specific law, underneath what ``--actualiza`` drives. Unlike
@@ -229,7 +220,7 @@ freshness metadata.
     # que hay que actualizar (fila por fila contra la SCJN, issue #211;
     # --solo-fecha para una comparacion offline mas barata y menos precisa):
     ./scripts/fetch_scjn_legislacion.py --outdir scripts/scjn --plan
-    # actualizarlo (rastrea + enlaza + empaqueta, solo lo pendiente):
+    # actualizarlo (rastrea + empaqueta, solo lo pendiente):
     ./scripts/fetch_scjn_legislacion.py --outdir scripts/scjn --actualiza
 
 Needs at least one law already seeded under ``<outdir>/leyes/`` -- a
@@ -257,14 +248,10 @@ import time
 from datetime import date
 from pathlib import Path
 
-# `dofjson` and `nota2md` are not dependencies of the package: they come from
-# PyPI (`pip install dofjson nota2md`, or `uv sync --group scripts`), and
 # `scjn` itself is the repository root.
 _RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_RAIZ))
 
-from dofjson.titulos import SIN_CACHE_DIR, legal_provisions_titles  # noqa: E402
-from nota2md.linking import newest_dof_publication_dates  # noqa: E402
 from scjn import api as scjn_api  # noqa: E402
 from scjn.api import elige_ordenamiento  # noqa: E402
 from scjn.cache import COLECCIONES_POR_ID  # noqa: E402
@@ -281,7 +268,7 @@ from scjn.state import (  # noqa: E402
     motivo_pendiente,
 )
 
-#: The one collection with the DOF-linked release/`--actualiza` chain
+#: The one collection with the `--actualiza` chain
 #: described in the module docstring above (issue #189), a literal path
 #: segment. Since issue #220 (`reglamentos`), #222 (`lineamientos`) and #277
 #: (`tratados`), every
@@ -291,9 +278,9 @@ from scjn.state import (  # noqa: E402
 #: `scjn.cache.Coleccion` rather than duplicated per collection -- issue
 #: #222's Fase 0, superseding #220's decision 4 of one hand-written pair per
 #: collection) -- everything else below (`--actualiza`, `refresca_catalogo`,
-#: `scjn_dates`/`dof_dates`, the `nombre_scjn` override, `--solo-fecha`)
-#: stays `leyes`-only, since it exists only to feed the DOF link neither
-#: id-keyed collection has (see CLAUDE.md's own sections on them).
+#: `scjn_dates`, the `nombre_scjn` override, `--solo-fecha`)
+#: stays `leyes`-only, since it exists only for the `abrev`/`actualizado`
+#: path no id-keyed collection has (see CLAUDE.md's own sections on them).
 #: `--coleccion` is dispatched through `scjn.cache.COLECCIONES_POR_ID`: a
 #: fourth id-keyed collection means one more dict entry, not a new branch.
 COLECCION = "leyes"
@@ -312,8 +299,8 @@ def _load_catalog(outdir: Path) -> list[dict]:
     issue #210 or has none at all yet -- the same tolerance
     `scjn.release.download_scjn_leyes_catalog` gives an old-format tarball.
 
-    `actualizado` is the **freshest known** date, computed live as the newer
-    of `actualizado_scjn`/`actualizado_dof` (issue #210/#211) -- deliberately
+    `actualizado` is the **freshest known** date, computed live from
+    `actualizado_scjn` (issue #210/#211) -- deliberately
     *not* read verbatim off a persisted `actualizado` key, because that key
     means something else in the same file: `rastrea_coleccion` writes it at
     crawl time to record what this law's snapshots were actually crawled
@@ -325,7 +312,7 @@ def _load_catalog(outdir: Path) -> list[dict]:
     bug this fixes: an earlier version of `refresca_catalogo` wrote the
     fresh value into `actualizado` directly, so a plan run immediately after
     a refresh compared that key against itself and could never detect a
-    change. A record with neither subfield (never refreshed under #210, or
+    change. A record without it (never refreshed under #210, or
     genuinely never dated) falls back to that legacy `actualizado` key
     as-is -- `estado.json`'s only source is then also the "crawled against"
     one, same degraded case `scjn.release.download_scjn_leyes_catalog`
@@ -365,8 +352,7 @@ def _load_catalog(outdir: Path) -> list[dict]:
         entrada = {"abrev": estado.get("abrev") or slug, "nombre": nombre}
         if estado.get("nombre_scjn"):
             entrada["nombre_scjn"] = estado["nombre_scjn"]
-        fuentes = [f for f in (estado.get("actualizado_scjn"), estado.get("actualizado_dof")) if f]
-        actualizado = max(fuentes) if fuentes else estado.get("actualizado")
+        actualizado = estado.get("actualizado_scjn") or estado.get("actualizado")
         if actualizado:
             entrada["actualizado"] = actualizado
         catalogo.append(entrada)
@@ -431,32 +417,16 @@ def _imprime_avance(mensaje: str) -> None:
 def _script_hermano(nombre: str):
     """Another `scripts/` script, imported by path so its own `main(argv)`
     can be called in-process — `scripts/` is not a package, and the chain of
-    issue #148 is short enough that shelling out four subprocesses to run it
+    issue #148 is short enough that shelling out a subprocess to run it
     would only add ways for it to break silently.
 
-    Imported lazily, inside the functions that need it: `--plan` must stay
-    cheap and offline, and `enlaza_scjn_legislacion` pulls in
-    `nota2md.builder` (and its dependencies) just by being imported."""
+    Imported lazily, inside the function that needs it: `--plan` must stay
+    cheap and offline."""
     ruta = Path(__file__).resolve().parent / f"{nombre}.py"
     spec = importlib.util.spec_from_file_location(nombre, ruta)
     modulo = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(modulo)
     return modulo
-
-
-def _resolver_cache_dir(valor: str | None):
-    """--cache-dir's value, resolved the same way `enlaza_scjn_legislacion.py`
-    resolves its own: not given -> SIN_CACHE_DIR (dofjson.titulos.CACHE_DIR);
-    'none' -> None (into memory); anything else -> that path. Kept as a small
-    local copy rather than reached for through `_script_hermano` so `--plan`
-    and a plain crawl (neither of which need the DOF titles cache) do not pay
-    for importing `enlaza_scjn_legislacion.py`, which pulls in
-    `nota2md.builder`."""
-    if valor is None:
-        return SIN_CACHE_DIR
-    if valor.lower() == "none":
-        return None
-    return Path(valor)
 
 
 def _iso(fecha: str | None) -> str | None:
@@ -477,7 +447,7 @@ def scjn_dates(
     through exactly the candidate selection the crawl uses
     (`elige_ordenamiento`), so this can never date a law off the wrong
     document. A law the SCJN does not answer for at all is simply absent —
-    that is the `lfca` case, and the DOF half covers it.
+    that is the `lfca` case.
 
     A failure on one law never aborts the refresh over one law's metadata:
     it is warned about and skipped, the same posture the crawl itself takes.
@@ -508,21 +478,6 @@ def scjn_dates(
     return fechas
 
 
-def dof_dates(catalogo: list[dict], *, cache_dir=None, log=None) -> dict[str, str]:
-    """slug -> the newest DOF publication date whose title names the law and
-    opens with DECRETO/LEY. One pass over the whole titles stream for the
-    whole collection, not one lookup per law."""
-    instrumentos = {slug_instrumento(e): e["nombre"] for e in catalogo}
-    titulos = (
-        legal_provisions_titles(log=(lambda *_a, **_k: None))
-        if cache_dir is None
-        else legal_provisions_titles(cache_dir, log=(lambda *_a, **_k: None))
-    )
-    if log:
-        log(f"  leyendo titulos del DOF para {len(instrumentos)} ley(es)...")
-    return newest_dof_publication_dates(instrumentos, titulos)
-
-
 def _archivo_refresco(outdir: Path) -> Path:
     return outdir / COLECCION / ".actualizado_refrescado.json"
 
@@ -532,50 +487,43 @@ def _fecha_refresco(outdir: Path) -> str | None:
 
     Printed by `--plan` because the corpus can never be fresher than the
     refresh it is planned against: "0 pendientes" means "up to date as of
-    this date", not "up to date with today's DOF". Replaces
-    `catalogo.json`'s own mtime (issue #210): there is no single file to
-    stat any more, since `actualizado_scjn`/`actualizado_dof` are now
-    written into each law's own `estado.json`."""
+    this date". Replaces `catalogo.json`'s own mtime (issue #210): there is
+    no single file to stat any more, since `actualizado_scjn` is now written
+    into each law's own `estado.json`."""
     try:
         return json.loads(_archivo_refresco(outdir).read_text(encoding="utf-8"))["fecha"]
     except (OSError, json.JSONDecodeError, KeyError):
         return None
 
 
-def refresca_catalogo(outdir: Path, *, cache_dir=SIN_CACHE_DIR, dof_only: bool = False) -> None:
-    """Refresh every known law's own `actualizado_scjn`/`actualizado_dof`
-    before planning against them (issue #148, folded into issue #210's
-    per-law `estado.json`). Without this the plan is computed against
-    whatever those fields were last refreshed with, which is exactly the
-    question being asked — so it is the default, and
-    `--sin-refrescar-catalogo` is for when the refresh just ran by hand and
-    there is no reason to pay for it twice.
+def refresca_catalogo(outdir: Path) -> None:
+    """Refresh every known law's own `actualizado_scjn` before planning
+    against it (issue #148, folded into issue #210's per-law `estado.json`).
+    Without this the plan is computed against whatever that field was last
+    refreshed with, which is exactly the question being asked — so it is the
+    default, and `--sin-refrescar-catalogo` is for when the refresh just ran
+    by hand and there is no reason to pay for it twice.
 
-    Writes `actualizado_scjn`/`actualizado_dof` only, **never** the bare
-    `actualizado` key: that one is `rastrea_coleccion`'s own, written once
-    at crawl time to record what a law's snapshots were actually crawled
-    *against* (see `_load_catalog`'s docstring for the bug this avoids —
-    overwriting it here would make every date-only fallback comparison
-    compare that key against itself). `_load_catalog` computes the freshest
-    `actualizado` live, from these two subfields, for anything that reads
-    "the catalogue's `actualizado`" afterwards.
+    Writes `actualizado_scjn` only, **never** the bare `actualizado` key:
+    that one is `rastrea_coleccion`'s own, written once at crawl time to
+    record what a law's snapshots were actually crawled *against* (see
+    `_load_catalog`'s docstring for the bug this avoids — overwriting it
+    here would make every date-only fallback comparison compare that key
+    against itself). `_load_catalog` computes the freshest `actualizado`
+    live, from this subfield, for anything that reads "the catalogue's
+    `actualizado`" afterwards.
 
-    Each source's own date is read as a floor, not overwritten blindly: a
-    law this run's `scjn_dates`/`dof_dates` did not answer for (a transient
-    SCJN failure, or `dof_only=True` skipping the SCJN half entirely) keeps
-    whichever value its own `estado.json` already carried, since neither
-    source's date can ever move backwards in practice — under-reporting
-    `actualizado` by discarding a still-true previous answer would be worse
-    than a run that changes nothing for that law. `dof_only=True` skips the
-    SCJN reform table and makes the whole refresh offline, at the cost of
-    the omnibus-decree laws only the SCJN half dates (see the module
-    docstring) -- it is for a quick local refresh, not for a run whose plan
-    anyone acts on."""
+    The date is read as a floor, not overwritten blindly: a law this run's
+    `scjn_dates` did not answer for (a transient SCJN failure) keeps whichever
+    value its own `estado.json` already carried, since the SCJN's date can
+    never move backwards in practice — under-reporting `actualizado` by
+    discarding a still-true previous answer would be worse than a run that
+    changes nothing for that law. The freshness of a law is decided by the
+    SCJN alone."""
     log = lambda mensaje: print(mensaje, file=sys.stderr)  # noqa: E731
-    log(f"{COLECCION}: refrescando 'actualizado' desde la SCJN y el DOF...")
+    log(f"{COLECCION}: refrescando 'actualizado' desde la SCJN...")
     catalogo = _load_catalog(outdir)
-    fechas_scjn = {} if dof_only else scjn_dates(catalogo, outdir, log=log)
-    fechas_dof = dof_dates(catalogo, cache_dir=cache_dir, log=log)
+    fechas_scjn = scjn_dates(catalogo, outdir, log=log)
 
     sin_fecha = 0
     for entrada in catalogo:
@@ -583,16 +531,10 @@ def refresca_catalogo(outdir: Path, *, cache_dir=SIN_CACHE_DIR, dof_only: bool =
         destino = outdir / COLECCION / slug
         existente = lee_estado(destino)
         actualizado_scjn = fechas_scjn.get(slug, existente.get("actualizado_scjn"))
-        actualizado_dof = fechas_dof.get(slug, existente.get("actualizado_dof"))
-        campos = {}
-        if actualizado_scjn:
-            campos["actualizado_scjn"] = actualizado_scjn
-        if actualizado_dof:
-            campos["actualizado_dof"] = actualizado_dof
-        if not (actualizado_scjn or actualizado_dof):
+        if not actualizado_scjn:
             sin_fecha += 1
-        if campos:
-            escribe_estado(destino, **campos)
+            continue
+        escribe_estado(destino, actualizado_scjn=actualizado_scjn)
 
     _archivo_refresco(outdir).parent.mkdir(parents=True, exist_ok=True)
     _archivo_refresco(outdir).write_text(
@@ -606,16 +548,14 @@ def actualiza_coleccion(
     espera: float,
     *,
     destino: Path,
-    cache_dir=SIN_CACHE_DIR,
     refresca: bool = True,
-    dof_only: bool = False,
     solo_fecha: bool = False,
     incluye_sin_actualizado: bool = False,
     empaqueta: bool = True,
 ) -> int:
     """The whole issue #148 chain in one call: refresh the catalogue, work
-    out what is pending, and for each pending instrumento crawl it, link it
-    and — once, at the end — repackage the assets that changed. Returns how
+    out what is pending, and for each pending instrumento crawl it and
+    — once, at the end — repackage the assets that changed. Returns how
     many instrumentos failed, so a caller can make it the process's own exit
     status.
 
@@ -624,15 +564,10 @@ def actualiza_coleccion(
     next `--plan` lists it again, and the run moves on to the next law. The
     summary at the end says which ones need another try.
 
-    The DOF titles are streamed once (issue #166) and the grouping reused for
-    every instrumento — `enlaza_coleccion` takes it as an argument precisely
-    so a chain like this does not walk the whole notas-archivo cache once per
-    law.
-
     Packaging is `empaqueta_scjn_leyes.py` (issue #128), the per-instrument
     release of this one collection."""
     if refresca:
-        refresca_catalogo(outdir, cache_dir=cache_dir, dof_only=dof_only)
+        refresca_catalogo(outdir)
     pendientes = planea_coleccion(
         outdir, incluye_sin_actualizado=incluye_sin_actualizado,
         solo_fecha=solo_fecha, espera=espera,
@@ -641,19 +576,12 @@ def actualiza_coleccion(
         print(f"{COLECCION}: nada que actualizar; no se toca la SCJN", file=sys.stderr)
         return 0
 
-    enlaza = _script_hermano("enlaza_scjn_legislacion")
-    porf = enlaza.carga_porf(
-        legal_provisions_titles(cache_dir, log=lambda *_: None)
-    )
-    cache_notas: dict = {}
-
     listos, fallidos = [], []
     for n, slug in enumerate(pendientes, 1):
         print(f"\n== [{n}/{len(pendientes)}] {slug} ==", file=sys.stderr)
         try:
             if rastrea_coleccion(outdir, espera, instrumento={slug}):
                 raise RuntimeError("la SCJN no devolvio nada para este instrumento")
-            enlaza.enlaza_coleccion(outdir, porf, cache_notas, instrumento={slug})
         except Exception as exc:
             print(f"  aviso: {slug} no se pudo actualizar: {exc}", file=sys.stderr)
             fallidos.append(slug)
@@ -737,11 +665,10 @@ def planea_coleccion(
     comparison for that one law alone, and is reported separately as having
     done so, never silently.
 
-    `actualizado_dof`/`actualizado_scjn` (issue #210) are not replaced by
-    any of this: row comparison catches a *gap* in an indexed table, and the
-    DOF half is still the only thing that notices a reform the SCJN has not
-    indexed at all yet (issue #124's `lfca`) -- a row comparison against a
-    table that does not have the reform cannot see it either.
+    `actualizado_scjn` (issue #210) is not replaced by any of this: row
+    comparison catches a *gap* in an indexed table, while a reform the SCJN
+    has not indexed at all yet (issue #124's `lfca`) is invisible to it, as
+    to the date comparison: the SCJN's own data is the only source.
 
     Instrumentos with no `actualizado` in the catalogue (`solo_fecha`, or a
     law that fell back to it) are always printed, counted apart, and only
@@ -837,8 +764,8 @@ def planea_coleccion(
     fecha_refresco = _fecha_refresco(outdir)
     if fecha_refresco:
         print(
-            f"  'actualizado' se refresco el {fecha_refresco} (SCJN + DOF): sin "
-            "pendientes significa al dia hasta esa fecha, no hasta el DOF de hoy",
+            f"  'actualizado' se refresco el {fecha_refresco} (SCJN): sin "
+            "pendientes significa al dia hasta esa fecha",
             file=sys.stderr,
         )
     else:
@@ -962,7 +889,6 @@ def rastrea_coleccion(
             if reintenta is not None:
                 for archivo in destino.glob("*.md"):
                     archivo.unlink()
-                (destino / "indice.json").unlink(missing_ok=True)
                 # Its estado.json goes with them: it recorded that the
                 # snapshots just deleted were up to date, which stops being
                 # true the moment they are gone (issue #148).
@@ -1075,7 +1001,7 @@ def rastrea_coleccion(
     return fallidos
 
 
-# --- id-keyed collections (`reglamentos`, `lineamientos`, `tratados`): the narrow path,
+# --- id-keyed collections (`reglamentos`, `lineamientos`, `tratados`, `estatutos`): the narrow path,
 # shared (issue #222's Fase 0) -----------------------------------------
 #
 # Only the two pieces any id-keyed collection actually needs exist here: a
@@ -1087,8 +1013,8 @@ def rastrea_coleccion(
 # `lineamientos` need are the exact same shape, and #220's decision to keep
 # them hand-duplicated ("a sibling release, not a parameter") is superseded
 # here: two was a defensible cost, three was not. Most of what
-# `rastrea_coleccion`/`planea_coleccion` do exists only to feed the DOF link
-# (`--actualiza`, `refresca_catalogo`, `scjn_dates`/`dof_dates`, the
+# `rastrea_coleccion`/`planea_coleccion` do exists only for the `abrev`/
+# `actualizado` path (`--actualiza`, `refresca_catalogo`, `scjn_dates`, the
 # `nombre_scjn` override, `--solo-fecha`), which no id-keyed collection has
 # (issue #220's own Scope, unchanged by #222) -- threading `coleccion`
 # through all of that would touch code this issue explicitly leaves alone.
@@ -1354,9 +1280,9 @@ def main(argv=None) -> int:
         help=(
             "que coleccion rastrear (default: leyes). 'reglamentos' (issue #220), "
             "'lineamientos' (issue #222) y 'tratados' (issue #277) solo admiten --plan/--instrumento/--reiniciar/un "
-            "rastreo liso -- --actualiza, --solo-fecha, --dof-only, --reintenta, "
+            "rastreo liso -- --actualiza, --solo-fecha, --reintenta, "
             "--sin-refrescar-catalogo y --incluye-sin-actualizado son leyes-only, porque "
-            "existen para alimentar el enlace a DOF que ningun id-keyed collection tiene"
+            "existen para el camino abrev/actualizado que ningun id-keyed collection tiene"
         ),
     )
     p.add_argument(
@@ -1380,8 +1306,8 @@ def main(argv=None) -> int:
         metavar="SLUG",
         help=(
             "repetible; slug_instrumento (scjn.catalog.slug_instrumento, p.ej. ccf, "
-            "lisr) a re-descargar desde cero: se borran sus snapshots existentes y su "
-            "indice.json y se re-bajan; todo instrumento cuyo slug no este en la lista "
+            "lisr) a re-descargar desde cero: se borran sus snapshots existentes y "
+            "se re-bajan; todo instrumento cuyo slug no este en la lista "
             "se salta sin tocar la SCJN. No mezclar con --reiniciar."
         ),
     )
@@ -1391,7 +1317,7 @@ def main(argv=None) -> int:
         metavar="SLUG",
         help=(
             "repetible; slug_instrumento (--coleccion leyes) o id_ordenamiento "
-            "(--coleccion reglamentos/lineamientos/tratados) a rastrear, sin tocar la SCJN para "
+            "(--coleccion reglamentos/lineamientos/tratados/estatutos) a rastrear, sin tocar la SCJN para "
             "ningun otro (issue #148). A diferencia de --reintenta, no borra nada: los "
             "snapshots ya en disco se conservan y solo se bajan las reformas nuevas."
         ),
@@ -1419,7 +1345,7 @@ def main(argv=None) -> int:
         action="store_true",
         help=(
             "la cadena completa de issue #148 en un solo comando: refresca el catalogo, "
-            "calcula el plan, y para cada instrumento pendiente rastrea, enlaza y "
+            "calcula el plan, y para cada instrumento pendiente rastrea y "
             "reempaqueta su asset. Sale sin efectos cuando no hay pendientes"
         ),
     )
@@ -1427,17 +1353,8 @@ def main(argv=None) -> int:
         "--sin-refrescar-catalogo",
         action="store_true",
         help=(
-            "no vuelve a refrescar 'actualizado' desde la SCJN y el DOF antes de "
+            "no vuelve a refrescar 'actualizado' desde la SCJN antes de "
             "planear (--plan/--actualiza); usalo solo si ese refresco acaba de correr"
-        ),
-    )
-    p.add_argument(
-        "--dof-only",
-        action="store_true",
-        help=(
-            "el refresco de 'actualizado' (--plan/--actualiza) se salta la tabla de "
-            "reformas de la SCJN; offline, pero sub-fecha las leyes reformadas solo "
-            "por decretos omnibus (ver el docstring del modulo)"
         ),
     )
     p.add_argument(
@@ -1452,17 +1369,6 @@ def main(argv=None) -> int:
         ),
     )
     p.add_argument(
-        "--cache-dir",
-        default=None,
-        metavar="DIR",
-        help=(
-            "directorio con los assets .tgz de notas-archivo de donde el paso de "
-            "enlace de --actualiza lee los titulos del DOF (poblalo con "
-            "`nota2md download gazette-metadata`); sin valor: "
-            "dofjson.titulos.CACHE_DIR; 'none': a memoria"
-        ),
-    )
-    p.add_argument(
         "--destino",
         type=Path,
         default=Path("scripts/scjn/leyes-release"),
@@ -1471,7 +1377,7 @@ def main(argv=None) -> int:
     p.add_argument(
         "--sin-empaquetar",
         action="store_true",
-        help="con --actualiza, se detiene despues de enlazar y no reescribe ningun asset",
+        help="con --actualiza, se detiene despues de rastrear y no reescribe ningun asset",
     )
     p.add_argument(
         "--incluye-sin-actualizado",
@@ -1493,14 +1399,13 @@ def main(argv=None) -> int:
         raise SystemExit("--plan solo dice que hay que hacer; --actualiza lo hace. Elige uno.")
 
     if args.coleccion in COLECCIONES_POR_ID:
-        # These exist only to feed --actualiza's DOF link (issue #220's own
-        # Scope: no DOF linking for any id-keyed collection, unchanged by
-        # #222), so mixing any of them with an id-keyed --coleccion is a
-        # caller's mistake, not a request to honour partially.
+        # These exist only for `leyes`' abrev/actualizado path (issue #220's
+        # own Scope, unchanged by #222), so mixing any of them with an
+        # id-keyed --coleccion is a caller's mistake, not a request to honour
+        # partially.
         prohibidas = {
             "--actualiza": args.actualiza,
             "--solo-fecha": args.solo_fecha,
-            "--dof-only": args.dof_only,
             "--reintenta": args.reintenta,
             "--sin-refrescar-catalogo": args.sin_refrescar_catalogo,
             "--incluye-sin-actualizado": args.incluye_sin_actualizado,
@@ -1509,7 +1414,7 @@ def main(argv=None) -> int:
         if usadas:
             raise SystemExit(
                 f"--coleccion {args.coleccion} no admite {', '.join(usadas)}: existen solo "
-                "para alimentar el enlace a DOF, que esta coleccion no tiene (issue #220/#222)"
+                "para el camino abrev/actualizado de leyes (issue #220/#222)"
             )
 
     reintenta = set(args.reintenta) if args.reintenta else None
@@ -1527,9 +1432,7 @@ def main(argv=None) -> int:
             )
     elif args.plan:
         if not args.sin_refrescar_catalogo:
-            refresca_catalogo(
-                args.outdir, cache_dir=_resolver_cache_dir(args.cache_dir), dof_only=args.dof_only
-            )
+            refresca_catalogo(args.outdir)
         planea_coleccion(
             args.outdir, incluye_sin_actualizado=args.incluye_sin_actualizado,
             solo_fecha=args.solo_fecha, espera=args.espera,
@@ -1539,9 +1442,7 @@ def main(argv=None) -> int:
             args.outdir,
             args.espera,
             destino=args.destino,
-            cache_dir=_resolver_cache_dir(args.cache_dir),
             refresca=not args.sin_refrescar_catalogo,
-            dof_only=args.dof_only,
             solo_fecha=args.solo_fecha,
             incluye_sin_actualizado=args.incluye_sin_actualizado,
             empaqueta=not args.sin_empaquetar,

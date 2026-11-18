@@ -4,29 +4,34 @@
 [![PyPI](https://badge.fury.io/py/scjn.svg)](https://badge.fury.io/py/scjn)
 
 Client for the SCJN's SCOW JSON API (`https://legislacion.scjn.gob.mx`), the writer of its Markdown
-snapshots and reader of the four SCJN GitHub releases: `scjn-leyes` (a Mexican federal law's
-reform-dated snapshots, keyed by `abrev`) and the id-keyed `scjn-reglamentos`, `scjn-lineamientos` and
-`scjn-tratados` (keyed by `id_ordenamiento`; international treaties are the SCJN's *ámbito*
-`TRATADOS INTERNACIONALES`, any category). Each snapshot carries a `fuente: scjn` provenance header.
-The SCJN is **not** an official source of legal text — the *Diario Oficial de la Federación* (DOF),
-read through [`dofjson`](https://github.com/legistlan/dofjson), remains that; this package's crawl is a convenience corpus the
-SCJN's own consolidated view makes possible, never a replacement for it.
+snapshots and reader of the five SCJN GitHub releases: `scjn-leyes` (a Mexican federal law's
+reform-dated snapshots, keyed by `abrev`) and the id-keyed `scjn-reglamentos`, `scjn-lineamientos`,
+`scjn-tratados` and `scjn-estatutos` (keyed by `id_ordenamiento`; international treaties are the SCJN's
+*ámbito* `TRATADOS INTERNACIONALES`, any category; estatutos are the federal instruments the SCJN
+classifies `ESTATUTO`). All five releases are published (see [the releases](#the-releases-owner)). Each snapshot carries a `fuente: scjn` provenance header.
+The SCJN is **not** an official source of legal text — the *Diario Oficial de la Federación* (DOF)
+remains that; this package's crawl is a convenience corpus the SCJN's own consolidated view makes
+possible, never a replacement for it. This repository and its releases hold SCJN data only: no link to
+the DOF note that published a snapshot (`codNota`), no DOF text and no DOF date. That DOF linking lives
+outside this repository.
 
 ## Documentation
 
 - **Using the package:** [legistlan.github.io/scjn](https://legistlan.github.io/scjn/)
 - **Extending the package:** [legistlan.github.io/scjn/dev](https://legistlan.github.io/scjn/dev/)
 
-The package depends on no other package of the Legistlan project, and nothing here imports back from
-`nota2md` or `dofjson` (`tests/test_boundary.py`). `scjn.api` is the transport, `scjn.markdown` and `scjn.outline`
+The package depends on no other package of the Legistlan project, and nothing here, package or
+script, imports `nota2md` or `dofjson` (`tests/test_boundary.py`). `scjn.api` is the transport, `scjn.markdown` and `scjn.outline`
 write a snapshot, `scjn.catalog`, `scjn.state` and `scjn.header` are the catalogue's algebra, the
 per-instrument crawl state and the provenance header's reader, `scjn.discovery` is the shared discovery
 of the id-keyed collections, and `scjn.release` holds the release readers (`download_scjn_leyes_corpus`,
 `download_scjn_leyes_index`, `download_scjn_leyes_catalog`, `iter_current_federal_laws`,
 `markdown_de_snapshot`, `download_scjn_leyes_assets`, `local_slugs`, and the same names with
-`reglamentos`/`lineamientos`/`tratados`), disk-first, with their own cache directory (`scjn.cache`,
-`$SCJN_CACHE_DIR`). `codNota` linking — matching a snapshot to the DOF `codNota` that produced it —
-stays one layer up in `nota2md`: a `codNota` is a DOF concept, and the dependency direction is one way.
+`reglamentos`/`lineamientos`/`tratados`/`estatutos`), disk-first, with their own cache directory (`scjn.cache`,
+`$SCJN_CACHE_DIR`). A `scjn-leyes` tarball holds the snapshots and `estado.json`. A copy made before the
+DOF linking left this repository (an old cache or mirror, not what GitHub serves today) also has an
+`indice.json` and a `notas/` folder in every tarball and a `codNota` section in its index, which the
+readers ignore.
 
 Since issue #215 every law also carries the SCJN's own `materia` (subject
 classification), `vigencia` (whether it is still in force — seven values, not
@@ -34,11 +39,20 @@ a boolean) and `resumen` (a one-paragraph abstract). They are per law, not
 per reform, so they live in each law's own `estado.json` and in the release
 index, and `download_scjn_leyes_catalog`/`iter_current_federal_laws` return
 them with no extra request — which makes `scjn-leyes` a *classified* corpus.
-`nota2md`'s `scripts/fetch_federal_law_metadata.py` is what fills them in, one SCJN
+They are filled in with one SCJN
 search per law, matched by `idOrdenamiento` so a wrong document can never be
 described as the right one (issue #115, Hallazgo C).
 
-    scjn download [--coleccion {leyes,reglamentos,lineamientos,tratados}] [--slug SLUG | --id ID]
+Since issue #8 every instrument, in every collection, also carries the rest of the SCJN's
+classification: `categoria_ordenamiento` (`LEY`, `CODIGO`, `REGLAMENTO`, ...), `ambito` (`FEDERAL`,
+`ESTATAL`, `TRATADOS INTERNACIONALES`), `pais` (what tells the instruments of `scjn-tratados` apart)
+and, for a state-level instrument, `estado` and `municipio` (`scjn.release.CAMPOS_CLASIFICACION`).
+The index omits a field the SCJN gives no value for, and the readers return all five keys, `None`
+where the index has none (an index older than the change has none; every published index carries the
+classification wherever the SCJN gives it). They were filled into `estado.json` of the instruments
+already crawled by `scripts/backfill_scjn_classification.py`.
+
+    scjn download [--coleccion {leyes,reglamentos,lineamientos,tratados,estatutos}] [--slug SLUG | --id ID]
                   [--cache-dir DIR] [--refrescar]
 
 puts a release on disk (`leyes` by default; `--slug` narrows `leyes`, `--id` the others); every reader in `scjn.release` then reads off it
@@ -141,6 +155,30 @@ Rule numbers below are those of the day each entry was written; `md2akn`'s `RULE
   240 instruments had a gap on disk; all four corpora were re-crawled with the
   guarded client (`scripts/recrawl_scjn_outline.py --ledger`).
 
+- **0.6.0** — the fifth id-keyed collection, `scjn-estatutos` (issue #9): the federal instruments the
+  SCJN classifies `ESTATUTO` (379 at the audit of 13 November 2026). `download_scjn_estatutos_index` /
+  `_corpus` / `_assets`, `local_estatutos_ids` and `iter_current_estatutos` are the same thin wrappers
+  over the generic core, `scjn.cache.ESTATUTOS` joins `COLECCIONES_POR_ID`, `scjn download --coleccion
+  estatutos` fetches it, `scjn.release.construye_indice_global_estatutos` is its index builder and
+  `scripts/discover_federal_estatutos.py` its discovery. **`scjn-estatutos` was published on 2026-11-17**
+  (379 instruments, 377 with text, 1,139 snapshots; 178398 is indexed with no snapshot and 111330 with 4 of 5
+  reforms, because the SCJN serves a reform with a missing block that the completeness guard refuses).
+  The five releases were republished that day from this code, without DOF data and with the classification
+  (leyes: 315 laws, 3,709 snapshots; reglamentos 1,087 instruments, 1,083 with text; lineamientos 163, 126
+  with text; tratados 1,455, 1,373 with text).
+  **Review fix-2 (found after the fact, same unreleased minor; breaking):** the repository holds SCJN
+  data only. The DOF side of `scjn-leyes` is gone: a tarball ships the snapshots and `estado.json` (no
+  `indice.json`, no `notas/`, none of the `estado.json` keys the linking wrote), the index has no `codNota`
+  section, and `download_scjn_leyes_corpus` / `iter_current_federal_laws` return no `codNota`, `notas` or
+  linking field (a snapshot is `archivo`, `fecha_publicacion`, `markdown`; the newest one is chosen from
+  the file names). `construye_indice_global` returns the index alone, not an `(index, counts)` pair.
+  The readers still read an older copy of the releases, ignoring what it carries (GitHub no longer serves one). In the scripts,
+  `actualizado_dof`, `--dof-only`, `--cache-dir` and the link step of `--actualiza` are gone, and no
+  script imports `dofjson` or `nota2md`; the `scripts` dependency group is removed.
+
+- **0.5.2** — the whole SCJN classification of an instrument (`categoria_ordenamiento`, `ambito`, `pais`,
+  `estado`, `municipio`, issue #8) in every index and reader, and `scripts/backfill_scjn_classification.py`.
+
 - **0.5.0** — the fourth id-keyed collection, `scjn-tratados` (issue #277):
   every international treaty the SCJN serves (~1,456 instruments, members
   by the SCJN's *ámbito* `TRATADOS INTERNACIONALES`, any category).
@@ -181,7 +219,7 @@ Rule numbers below are those of the day each entry was written; `md2akn`'s `RULE
 
 ## The releases' owner
 
-The four releases live in this repository, [`legistlan/scjn`](https://github.com/legistlan/scjn/releases):
+The five releases (seven tags counting continuations: `scjn-reglamentos` and `scjn-tratados` each have a `-2`) live in this repository, [`legistlan/scjn`](https://github.com/legistlan/scjn/releases):
 `scjn.release.DEFAULT_RELEASE_REPOSITORY` names it, and the environment variable
 `SCJN_RELEASE_REPOSITORY` (`<owner>/<name>`, read on every call by `scjn.release.release_repository`)
 points every lookup at a mirror of the releases elsewhere. Changing the default is a release of this
@@ -190,16 +228,14 @@ package.
 ## The crawl
 
 `scripts/` holds the crawl, from candidates to a packaged release (process A of the project): the
-four `discover_federal_*.py`, `seed_federal_reglamentos.py`, `fetch_scjn_legislacion.py`,
+five `discover_federal_*.py`, `seed_federal_reglamentos.py`, `fetch_scjn_legislacion.py`,
 `resume_scjn_leyes.py`, `recrawl_scjn_outline.py`, `rewrite_scjn_from_raw.py`,
 `verify_scjn_outline.py`, `measure_block_gaps.py`, `find_scjn_table_instruments.py`,
 `empaqueta_scjn_leyes.py` and `empaqueta_scjn_coleccion.py`. They write under `scripts/scjn/`
-(gitignored); every packaging script writes a `PUBLICAR.md` for a human and uploads nothing. Three of
-them (`discover_federal_laws.py`, `fetch_scjn_legislacion.py`, `recrawl_scjn_outline.py`) link laws
-to the DOF and import `dofjson` and `nota2md` from PyPI, never the package: `uv sync --group scripts`
-or `pip install dofjson nota2md`.
+(gitignored); every packaging script writes a `PUBLICAR.md` for a human and uploads nothing. No script
+imports `dofjson` or `nota2md`: they run with the package's own dependencies.
 
-`scripts/copy_scjn_releases.py <owner>/<name>` copies the four release series from another repository to this one,
+`scripts/copy_scjn_releases.py <owner>/<name>` copies the release series (`scjn-estatutos` is skipped while the source has none) from another repository to this one,
 byte for byte, and verifies them by name, size and digest (`--dry-run` first); it publishes nothing new.
 
 ## Tests

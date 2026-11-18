@@ -7,7 +7,7 @@ cache directory, so that every reader in `scjn.release` then reads off it with
 no network request at all.
 
 ```bash
-scjn download [--coleccion {leyes,reglamentos,lineamientos,tratados}]
+scjn download [--coleccion {leyes,reglamentos,lineamientos,tratados,estatutos}]
               [--slug SLUG | --id ID] [--cache-dir DIR] [--refrescar]
 ```
 
@@ -17,7 +17,7 @@ never revalidated, so a second run costs no download at all.
 ## `--coleccion`
 
 Which release to download: `leyes` (the default), `reglamentos`,
-`lineamientos` or `tratados`.
+`lineamientos`, `tratados` or `estatutos`.
 
 ```bash
 scjn download
@@ -36,7 +36,7 @@ scjn download --slug lfca --slug cpeum
 ## `--id`
 
 Only this instrument's tarball, by `id_ordenamiento`. Repeatable, and valid
-with `--coleccion reglamentos`, `lineamientos` or `tratados` only. Not given:
+with `--coleccion reglamentos`, `lineamientos`, `tratados` or `estatutos` only. Not given:
 every instrument the release publishes.
 
 ```bash

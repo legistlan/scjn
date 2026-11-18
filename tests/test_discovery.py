@@ -49,10 +49,10 @@ class PagedFakeApi:
         return []
 
 
-def _hit(id_ordenamiento, nombre, categoria="LINEAMIENTOS", ambito=None):
+def _hit(id_ordenamiento, nombre, categoria="LINEAMIENTOS", ambito=None, **campos):
     return Ordenamiento(
         idOrdenamiento=id_ordenamiento, ordenamiento=nombre,
-        categoriaOrdenamiento=categoria, ambito=ambito,
+        categoriaOrdenamiento=categoria, ambito=ambito, **campos,
     )
 
 
@@ -264,6 +264,26 @@ class TestDiscoverPorAmbito(unittest.TestCase):
         self.assertEqual(
             {c["categoria_ordenamiento"] for c in candidatos}, {"CONVENIO", "ACUERDO (S)", "CODIGO"}
         )
+
+    def test_cada_candidato_lleva_pais_estado_y_municipio(self):
+        api = FakeApi(
+            resultados={("tratado", "", AMBITO_TRATADOS): [
+                _hit("1", "CONVENIO A", categoria="CONVENIO", ambito=AMBITO_TRATADOS,
+                     pais="FRANCIA"),
+                _hit("2", "CONVENIO B", categoria="CONVENIO", ambito=AMBITO_TRATADOS,
+                     pais="MEXICO", estado="JALISCO", municipio="TLAJOMULCO"),
+            ]},
+            reformas={},
+        )
+
+        uno, dos = discovery.discover(
+            api, categoria="", ambito=AMBITO_TRATADOS, frases_union=("tratado",),
+            log=lambda *_a, **_k: None,
+        )
+
+        self.assertEqual((uno["pais"], uno["estado"], uno["municipio"]), ("FRANCIA", None, None))
+        self.assertEqual((dos["pais"], dos["estado"], dos["municipio"]),
+                         ("MEXICO", "JALISCO", "TLAJOMULCO"))
 
     def test_no_aplica_rescate_ni_auditoria_solo_cuenta_reformas_por_candidato(self):
         api = self._api()

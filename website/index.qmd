@@ -9,27 +9,28 @@ number-sections: false
 **scjn** is the client for the Suprema Corte de Justicia de la Nación's SCOW
 JSON API (the backend of `legislacion.scjn.gob.mx/consulta`), the writer of
 the Markdown snapshots of an instrument's reforms, and the disk-first reader
-of the four SCJN releases: `scjn-leyes`, `scjn-reglamentos`,
-`scjn-lineamientos` and `scjn-tratados`. Each snapshot carries a
+of the five SCJN releases: `scjn-leyes`, `scjn-reglamentos`,
+`scjn-lineamientos`, `scjn-tratados` and `scjn-estatutos`. Each snapshot carries a
 `fuente: scjn` provenance header.
 :::
 
 ::: {.callout-warning}
 ## The SCJN is not an official source of legal text
 
-The *Diario Oficial de la Federación* (DOF) is, and it is read through
-[dofjson](https://legistlan.github.io/dofjson/). `fuente: scjn` in a
+The *Diario Oficial de la Federación* (DOF) is. `fuente: scjn` in a
 provenance header means exactly that: the text is the SCJN's consolidated
-view, a convenience corpus and never a replacement for the gazette.
+view, a convenience corpus and never a replacement for the gazette. This
+site and its releases hold SCJN data only: nothing links a snapshot to the DOF
+note that published it, and that linking lives outside this repository.
 :::
 
 ::: {.fronts}
 ::: {.front}
-### Four releases
+### Five releases
 
 `scjn-leyes` (315 federal laws, reform-dated snapshots, keyed by `abrev`) and
-the id-keyed `scjn-reglamentos`, `scjn-lineamientos` and `scjn-tratados`
-(keyed by `id_ordenamiento`).
+the id-keyed `scjn-reglamentos`, `scjn-lineamientos`, `scjn-tratados` and
+`scjn-estatutos` (keyed by `id_ordenamiento`); all five are published.
 :::
 ::: {.front}
 ### Disk-first readers
@@ -63,7 +64,7 @@ text = markdown_de_snapshot("lfca", "<snapshot file name>")  # one reform, as Ma
 
 See [Install](pages/install.qmd) for what the package needs,
 [Command line](pages/cli.qmd) and [Python](pages/python.qmd) for the two ways
-to read a release, [Releases](pages/releases.qmd) for how the four releases are
+to read a release, [Releases](pages/releases.qmd) for how the releases are
 laid out, [Outline](pages/outline.qmd) for the marker lines and the
 completeness guard, and [Crawl](pages/crawl.qmd) for the scripts that produce a
 release. Extending the package itself is documented separately, on the

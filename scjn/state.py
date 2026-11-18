@@ -52,8 +52,8 @@ def escribe_estado(directory: Path, **campos) -> dict:
     """Merge `campos` into `directory`'s own `estado.json` and return the
     result. A merge, not an overwrite, because the fields have different
     owners: `fetch_scjn_legislacion.py` writes `actualizado`/`rastreado`,
-    `enlaza_scjn_legislacion.py` writes `enlazado`, and neither should erase
-    the other's record of what it did."""
+    `backfill_scjn_classification.py` writes the classification, and neither
+    should erase the other's record of what it did."""
     estado = {**lee_estado(directory), **campos}
     directory.mkdir(parents=True, exist_ok=True)
     (directory / ARCHIVO_ESTADO).write_text(
@@ -128,11 +128,9 @@ def motivo_pendiente(
       row comparison already answers *exactly* what changed and a date
       comparison on top would only ever be redundant or wrong (the `lfd`
       case: complete-looking by date, incomplete by row). `actualizado` is
-      not consulted at all in this mode — it stays load-bearing elsewhere
-      (`actualizado_dof` is still the only signal for a reform the SCJN has
-      not indexed yet, #124's `lfca`; a row comparison against a table that
-      does not have the reform cannot see it either — row comparison catches
-      *gaps*, the DOF half catches *lag*).
+      not consulted at all in this mode. A row comparison against a table
+      that does not have a reform yet cannot see it: the freshness of a law
+      is decided by the SCJN's own data alone.
     - `PENDIENTE_SIN_ACTUALIZADO`: `reformas` was not given (no
       `id_ordenamiento` on file yet, or the offline fallback mode — issue
       #211 keeps the date comparison as an explicit, cheaper alternative,

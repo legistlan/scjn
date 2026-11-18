@@ -885,6 +885,27 @@ class TestInstrumentMetadata(unittest.TestCase):
         self.assertEqual(hit.materia, "SEGURIDAD SOCIAL, LABORAL")
         self.assertEqual(hit.vigencia, "VIGENTE")
 
+    def test_la_busqueda_lee_pais_estado_y_municipio(self):
+        cliente, _ = api([self._respuesta([
+            self._hit("1", pais="MÉXICO", estado="JALISCO", municipio="GUADALAJARA"),
+        ])])
+
+        (hit,) = cliente.search_ordenamiento("LEY")
+
+        self.assertEqual((hit.pais, hit.estado, hit.municipio),
+                         ("MÉXICO", "JALISCO", "GUADALAJARA"))
+
+    def test_pais_estado_y_municipio_vacios_o_ausentes_quedan_en_none(self):
+        cliente, _ = api([self._respuesta([
+            self._hit("1", pais="", estado="  ", municipio=None),
+            self._hit("2"),
+        ])])
+
+        vacio, ausente = cliente.search_ordenamiento("LEY")
+
+        for hit in (vacio, ausente):
+            self.assertEqual((hit.pais, hit.estado, hit.municipio), (None, None, None))
+
     def test_un_resumen_nulo_o_vacio_queda_en_none(self):
         # `busqueda_lfca.json` is the real thing: the SCJN has no abstract
         # for that law and answers `"resumen": null`.

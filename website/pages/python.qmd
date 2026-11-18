@@ -32,7 +32,7 @@ for law in scjn.iter_current_federal_laws(["lfca"]):
 
 - `download_scjn_leyes_index`, `download_scjn_leyes_corpus` and
   `download_scjn_leyes_catalog` read the cached index, one law's tarball and the
-  catalogue (which includes the SCJN's own `materia`, `vigencia` and `resumen`).
+  catalogue (which includes the SCJN's own `materia`, `vigencia`, `resumen` and, since 0.5.2, its classification: `categoria_ordenamiento`, `ambito`, `pais`, `estado`, `municipio`).
 - `markdown_de_snapshot` returns one reform's Markdown, with the
   [outline markers](outline.qmd) by default; `outline=False` returns the
   same text without them, byte for byte.
@@ -42,8 +42,8 @@ for law in scjn.iter_current_federal_laws(["lfca"]):
 
 ## The id-keyed releases
 
-`scjn-reglamentos`, `scjn-lineamientos` and `scjn-tratados` have the same
-functions with `reglamentos`, `lineamientos` or `tratados` in the name, keyed by
+`scjn-reglamentos`, `scjn-lineamientos`, `scjn-tratados` and `scjn-estatutos` have the same
+functions with `reglamentos`, `lineamientos`, `tratados` or `estatutos` in the name, keyed by
 `id_ordenamiento` rather than by slug:
 
 ```python
@@ -57,15 +57,18 @@ for reglamento in scjn.iter_current_reglamentos():
 ```
 
 `download_scjn_lineamientos_*`, `download_scjn_tratados_*`,
-`local_lineamientos_ids`, `local_tratados_ids`, `iter_current_lineamientos` and
-`iter_current_tratados` follow the same pattern. An instrument with no
+`download_scjn_estatutos_*`, `local_lineamientos_ids`, `local_tratados_ids`,
+`local_estatutos_ids`, `iter_current_lineamientos`, `iter_current_tratados` and
+`iter_current_estatutos` follow the same pattern. An instrument with no
 consolidated text raises `SinTextoEnSCJN`.
 
 ## What only `leyes` has
 
 Only `scjn-leyes` has an `abrev` (the release's slug and asset name, never
-re-derived), an `actualizado` (`actualizado_scjn`, `actualizado_dof`), an
-`indice.json` and DOF linking. "Reform N" of a law is the SCJN reform table's
-chronological order. Linking a reform to its DOF `codNota` happens one layer up,
-in `nota2md`: a `codNota` is a DOF concept, and `scjn` imports no sibling
-package.
+re-derived) and an `actualizado` (the date of the newest reform the SCJN serves
+for the law: `actualizado_scjn`, or the date of its newest snapshot when that is
+absent; never a DOF date). "Reform N" of a law is the SCJN reform table's
+chronological order. A `scjn-leyes` tarball holds the
+snapshots and `estado.json`, nothing else, and the release carries no link to
+the DOF: that linking lives outside this repository. A snapshot comes back as
+`archivo`, `fecha_publicacion` and `markdown`.

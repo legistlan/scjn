@@ -22,10 +22,26 @@ def _respuesta(contenido: bytes) -> Mock:
 class TestColeccionesPorId(unittest.TestCase):
     """The id-keyed collections' descriptors (issues #222, #277)."""
 
-    def test_las_tres_colecciones_id_keyed(self):
+    def test_las_cuatro_colecciones_id_keyed(self):
         self.assertEqual(
-            sorted(cache.COLECCIONES_POR_ID), ["lineamientos", "reglamentos", "tratados"]
+            sorted(cache.COLECCIONES_POR_ID),
+            ["estatutos", "lineamientos", "reglamentos", "tratados"],
         )
+
+    def test_estatutos_tag_y_subdirectorio_son_scjn_estatutos(self):
+        # Issue #9: the fifth collection, not published yet.
+        estatutos = cache.COLECCIONES_POR_ID["estatutos"]
+        self.assertIs(estatutos, cache.ESTATUTOS)
+        self.assertEqual(estatutos.nombre, "estatutos")
+        self.assertEqual(estatutos.tag_base, "scjn-estatutos")
+        self.assertEqual(estatutos.subdirectorio, "scjn-estatutos")
+
+    def test_las_colecciones_existentes_no_cambian_de_tag_ni_de_subdirectorio(self):
+        for nombre in ("reglamentos", "lineamientos", "tratados"):
+            with self.subTest(nombre=nombre):
+                coleccion = cache.COLECCIONES_POR_ID[nombre]
+                self.assertEqual(coleccion.tag_base, f"scjn-{nombre}")
+                self.assertEqual(coleccion.subdirectorio, f"scjn-{nombre}")
 
     def test_tratados_tag_y_subdirectorio_son_scjn_tratados(self):
         tratados = cache.COLECCIONES_POR_ID["tratados"]
@@ -53,8 +69,8 @@ class TestResuelveCacheDir(unittest.TestCase):
             self.assertEqual(cache.resuelve_cache_dir(None), Path("/tmp/despues"))
 
     def test_una_ruta_se_usa_tal_cual(self):
-        # A diferencia de nota2md.cache, no hay modo "sin cache": todo lector
-        # de scjn.release es de disco (issue #209).
+        # No hay modo "sin cache": todo lector de scjn.release es de disco
+        # (issue #209).
         self.assertEqual(cache.resuelve_cache_dir("/tmp/mia"), Path("/tmp/mia"))
 
 

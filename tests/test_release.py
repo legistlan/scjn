@@ -33,106 +33,56 @@ def _hacer_tgz(archivos: dict) -> bytes:
     return buf.getvalue()
 
 
-def _indice_global(cod_notas: dict, instrumentos: dict | None = None) -> bytes:
-    """A gzipped `indice-global.json.gz`, as the packaging script writes it --
-    codNota keys as strings, values as lists."""
+def _indice_global(cod_notas: dict | None, instrumentos: dict | None = None) -> bytes:
+    """A gzipped `indice-global.json.gz`. `cod_notas=None` is the shape the
+    packaging script writes today (no `codNota` section); a dict is the shape
+    of the releases published before the DOF linking left this repository --
+    codNota keys as strings, values as lists -- which every reader must keep
+    reading, ignoring the section."""
     payload = {
         "generado": "2026-08-28T14:35:31+00:00",
         "coleccion": "leyes",
         "instrumentos": instrumentos or {},
-        "codNota": cod_notas,
     }
+    if cod_notas is not None:
+        payload["codNota"] = cod_notas
     return gzip.compress(json.dumps(payload).encode("utf-8"))
 
 
 class TestConstruyeIndiceGlobal(unittest.TestCase):
-    def test_invierte_el_indice_por_codnota(self):
-        indice, _ = release.construye_indice_global(
-            [{
-                "slug": "lfca", "nombre": "LEY Federal de Cine", "asset": "lfca.tgz",
-                "indice": [{"archivo": "05-01-1999.md", "codNota": 4967917,
-                            "title_link_status": "linked",
-                            "content_diff_confirmed_codNota": 4967917,
-                            "content_diff_score": 0.991}],
-            }],
+    def test_lista_cada_instrumento_ordenado_por_slug_sin_seccion_codnota(self):
+        indice = release.construye_indice_global(
+            [
+                {"slug": "lft", "nombre": "LFT", "snapshots": 4},
+                {"slug": "lfca", "nombre": "LEY Federal de Cine", "asset": "lfca.tgz",
+                 "snapshots": 1},
+            ],
             generado="2026-08-28T00:00:00+00:00",
         )
 
         self.assertEqual(indice["coleccion"], "leyes")
-        self.assertEqual(indice["instrumentos"]["lfca"]["snapshots"], 1)
-        self.assertEqual(
-            indice["codNota"]["4967917"],
-            [{"slug": "lfca", "archivo": "05-01-1999.md",
-              "title_link_status": "linked",
-              "content_diff_confirmed_codNota": 4967917,
-              "content_diff_score": 0.991}],
+        self.assertEqual(indice["generado"], "2026-08-28T00:00:00+00:00")
+        self.assertEqual(list(indice["instrumentos"]), ["lfca", "lft"])
+        self.assertEqual(indice["instrumentos"]["lfca"], {
+            "nombre": "LEY Federal de Cine", "asset": "lfca.tgz", "snapshots": 1,
+        })
+        self.assertEqual(set(indice), {"generado", "coleccion", "instrumentos"})
+        self.assertNotIn("codNota", json.dumps(indice))
+
+    def test_una_ley_rastreada_pero_sin_conteo_cuenta_cero_snapshots(self):
+        indice = release.construye_indice_global(
+            [{"slug": "lfea", "nombre": "LFEA"}], generado="x",
         )
 
-    def test_las_claves_codnota_son_cadenas_porque_json_no_tiene_enteros(self):
-        indice, _ = release.construye_indice_global(
-            [{"slug": "lft", "nombre": "LFT",
-              "indice": [{"archivo": "01-04-1970.md", "codNota": 100}]}],
-            generado="x",
-        )
-
-        self.assertEqual(list(indice["codNota"]), ["100"])
-
-    def test_un_codnota_que_reforma_dos_leyes_conserva_ambas(self):
-        # El caso D4 de #117: si el valor fuera un objeto en vez de una lista,
-        # la segunda ley pisaria a la primera sin que nadie se enterara.
-        indice, _ = release.construye_indice_global(
-            [
-                {"slug": "lft", "nombre": "LFT",
-                 "indice": [{"archivo": "01-05-2019.md", "codNota": 500}]},
-                {"slug": "lss", "nombre": "LSS",
-                 "indice": [{"archivo": "01-05-2019.md", "codNota": 500}]},
-            ],
-            generado="x",
-        )
-
-        self.assertEqual(
-            [e["slug"] for e in indice["codNota"]["500"]], ["lft", "lss"]
-        )
-
-    def test_solo_entra_lo_enlazado_y_lo_demas_se_cuenta_por_motivo(self):
-        indice, conteos = release.construye_indice_global(
-            [
-                {"slug": "lft", "nombre": "LFT", "indice": [
-                    {"archivo": "a.md", "codNota": 1, "title_link_status": "linked"},
-                    {"archivo": "b.md", "codNota": None, "title_link_status": "ambiguous"},
-                    {"archivo": "c.md", "codNota": None, "title_link_status": "unlinked"},
-                ]},
-                {"slug": "lfea", "nombre": "LFEA", "indice": None, "snapshots": 3},
-            ],
-            generado="x",
-        )
-
-        self.assertEqual(list(indice["codNota"]), ["1"])
-        self.assertEqual(conteos["linked"], 1)
-        self.assertEqual(conteos["ambiguous"], 1)
-        self.assertEqual(conteos["unlinked"], 1)
-        self.assertEqual(conteos["sin_indice"], 1)
-
-    def test_una_ley_rastreada_pero_no_enlazada_sigue_apareciendo_en_instrumentos(self):
-        indice, _ = release.construye_indice_global(
-            [{"slug": "lfea", "nombre": "LFEA", "indice": None, "snapshots": 7}],
-            generado="x",
-        )
-
-        self.assertEqual(indice["instrumentos"]["lfea"]["snapshots"], 7)
+        self.assertEqual(indice["instrumentos"]["lfea"]["snapshots"], 0)
         self.assertEqual(indice["instrumentos"]["lfea"]["asset"], "lfea.tgz")
 
-    def test_los_codnota_quedan_ordenados_numericamente_no_como_texto(self):
-        # Byte-reproducibilidad del asset: "1000" < "9" como texto.
-        indice, _ = release.construye_indice_global(
-            [{"slug": "lft", "nombre": "LFT", "indice": [
-                {"archivo": "a.md", "codNota": 1000},
-                {"archivo": "b.md", "codNota": 9},
-            ]}],
-            generado="x",
+    def test_devuelve_solo_el_indice_no_una_tupla_con_conteos_de_enlace(self):
+        indice = release.construye_indice_global(
+            [{"slug": "lft", "nombre": "LFT", "snapshots": 2}], generado="x",
         )
 
-        self.assertEqual(list(indice["codNota"]), ["9", "1000"])
+        self.assertIsInstance(indice, dict)
 
 
 class ConCacheFixture(unittest.TestCase):
@@ -145,7 +95,7 @@ class ConCacheFixture(unittest.TestCase):
         self.release_dir = self.tmp / "scjn-leyes"
         self.release_dir.mkdir(parents=True)
 
-    def _publica_indice(self, cod_notas: dict, instrumentos: dict | None = None):
+    def _publica_indice(self, cod_notas: dict | None, instrumentos: dict | None = None):
         (self.release_dir / release.ASSET_INDICE_GLOBAL).write_bytes(
             _indice_global(cod_notas, instrumentos)
         )
@@ -155,12 +105,26 @@ class ConCacheFixture(unittest.TestCase):
 
 
 class TestDownloadScjnLeyesIndex(ConCacheFixture):
-    def test_convierte_las_claves_codnota_a_entero(self):
-        self._publica_indice({"4967917": [{"slug": "lfca", "archivo": "05-01-1999.md"}]})
+    def test_lee_el_indice_de_hoy_sin_seccion_codnota(self):
+        self._publica_indice(None, {"lfca": {"nombre": "LFCA", "snapshots": 1}})
 
         indice = release.download_scjn_leyes_index(cache_dir=self.tmp)
 
-        self.assertEqual(list(indice["codNota"]), [4967917])
+        self.assertEqual(indice["instrumentos"]["lfca"]["nombre"], "LFCA")
+        self.assertNotIn("codNota", indice)
+
+    def test_un_indice_publicado_con_seccion_codnota_se_lee_y_la_ignora(self):
+        # The releases published before the DOF linking left this repository
+        # still have the section; a reader neither fails on it nor returns it.
+        self._publica_indice(
+            {"4967917": [{"slug": "lfca", "archivo": "05-01-1999.md"}]},
+            {"lfca": {"nombre": "LFCA", "snapshots": 1}},
+        )
+
+        indice = release.download_scjn_leyes_index(cache_dir=self.tmp)
+
+        self.assertEqual(indice["instrumentos"]["lfca"]["nombre"], "LFCA")
+        self.assertNotIn("codNota", indice)
 
     def test_se_memoiza_para_no_releer_el_indice_por_cada_nota(self):
         self._publica_indice({"1": []})
@@ -185,64 +149,55 @@ class TestDownloadScjnLeyesCorpus(ConCacheFixture):
 
         self.assertIn("cpeum.tgz", str(ctx.exception))
 
-    def test_une_indice_con_el_markdown_de_cada_snapshot(self):
+    def test_cada_snapshot_trae_su_fecha_y_su_markdown_el_mas_antiguo_primero(self):
         self._publica_tgz(
-            "cpeum",
+            "lft",
             **{
-                "cpeum/indice.json": json.dumps([
-                    {"archivo": "22-01-1994.md", "codNota": 100, "ratio_similitud": 0.9,
-                     "sospechoso": False, "title_candidates": [100],
-                     "title_link_status": "linked",
-                     "content_diff_confirmed_codNota": None, "content_diff_score": None},
-                ]),
-                "cpeum/22-01-1994.md": "**TEXTO ORIGINAL.**",
+                "lft/01-01-1995.md": "**REFORMA.**",
+                "lft/22-01-1994.md": "**TEXTO ORIGINAL.**",
+                "lft/22-01-1994-2.md": "**REPETIDO.**",
+                "lft/estado.json": json.dumps({"rastreado": "2026-09-01"}),
             },
         )
 
-        resultado = release.download_scjn_leyes_corpus("cpeum", cache_dir=self.tmp)
+        resultado = release.download_scjn_leyes_corpus("lft", cache_dir=self.tmp)
 
-        self.assertEqual(resultado["slug"], "cpeum")
-        snap = resultado["snapshots"][0]
-        self.assertEqual(snap["codNota"], 100)
-        self.assertEqual(snap["title_link_status"], "linked")
-        self.assertEqual(snap["markdown"], "**TEXTO ORIGINAL.**")
+        self.assertEqual(resultado["slug"], "lft")
+        self.assertEqual(
+            [(s["archivo"], s["fecha_publicacion"], s["markdown"])
+             for s in resultado["snapshots"]],
+            [("22-01-1994-2.md", "22-01-1994", "**REPETIDO.**"),
+             ("22-01-1994.md", "22-01-1994", "**TEXTO ORIGINAL.**"),
+             ("01-01-1995.md", "01-01-1995", "**REFORMA.**")],
+        )
+        for snapshot in resultado["snapshots"]:
+            self.assertEqual(set(snapshot), {"archivo", "fecha_publicacion", "markdown"})
 
-    def test_cada_snapshot_trae_el_texto_dof_de_los_candidatos_considerados(self):
-        # Lo que hace auditable el enlace de #126/#127 sin volver a la red:
-        # el snapshot llega con el texto de cada candidato que se comparo,
-        # no solo con el codNota ganador.
+    def test_un_tarball_publicado_con_indice_json_y_notas_los_ignora(self):
+        # The releases published before the DOF linking left this repository
+        # ship `indice.json` and `notas/`: the reader neither fails on them,
+        # nor takes them for snapshots, nor returns anything they carry.
         self._publica_tgz(
             "lft",
             **{
                 "lft/indice.json": json.dumps([
-                    {"archivo": "22-01-1994.md", "codNota": 100,
-                     "title_candidates": [100, 101],
+                    {"archivo": "22-01-1994.md", "codNota": 100, "ratio_similitud": 0.9,
+                     "sospechoso": False, "title_candidates": [100],
+                     "title_link_status": "linked",
                      "content_diff_confirmed_codNota": 100, "content_diff_score": 0.8},
-                    {"archivo": "01-01-1995.md", "codNota": None, "title_candidates": []},
                 ]),
                 "lft/22-01-1994.md": "**TEXTO ORIGINAL.**",
-                "lft/01-01-1995.md": "**REFORMA.**",
                 "lft/notas/nota-100.md": "DECRETO uno.",
-                "lft/notas/nota-101.md": "DECRETO dos.",
+                "lft/estado.json": json.dumps({"enlazado": "2026-09-01"}),
             },
         )
 
         snapshots = release.download_scjn_leyes_corpus("lft", cache_dir=self.tmp)["snapshots"]
 
-        self.assertEqual(snapshots[0]["notas"], {100: "DECRETO uno.", 101: "DECRETO dos."})
-        self.assertEqual(snapshots[1]["notas"], {})
-
-    def test_instrumento_sin_indice_json_regresa_snapshots_sin_enlace_en_vez_de_omitirse(self):
-        # Fase 2 (issue #105) pendiente para este instrumento: hay
-        # snapshots pero enlaza_scjn_legislacion.py no ha corrido para el.
-        self._publica_tgz("lfea", **{"lfea/01-01-2012.md": "**TEXTO ORIGINAL.**"})
-
-        resultado = release.download_scjn_leyes_corpus("lfea", cache_dir=self.tmp)
-
-        snap = resultado["snapshots"][0]
-        self.assertEqual(snap["archivo"], "01-01-2012.md")
-        self.assertIsNone(snap["codNota"])
-        self.assertEqual(snap["markdown"], "**TEXTO ORIGINAL.**")
+        self.assertEqual(len(snapshots), 1)
+        self.assertEqual(snapshots[0]["archivo"], "22-01-1994.md")
+        self.assertEqual(snapshots[0]["markdown"], "**TEXTO ORIGINAL.**")
+        self.assertEqual(set(snapshots[0]), {"archivo", "fecha_publicacion", "markdown"})
 
 
 class TestMarkdownDeSnapshot(ConCacheFixture):
@@ -315,11 +270,13 @@ class TestLocalSlugs(unittest.TestCase):
             self.assertEqual(release.local_slugs(None), [])
 
 
-class TestIterCurrentFederalLawsConIndice(ConCacheFixture):
-    """A law that has already been linked -- its own `indice.json` decides
-    which snapshot is current."""
+class TestIterCurrentFederalLawsConIndiceAnterior(ConCacheFixture):
+    """A tarball published before the DOF linking left this repository still
+    holds an `indice.json` and a `notas/` folder: the winner is chosen from
+    the snapshots' own file names all the same, and nothing of them comes
+    back."""
 
-    def test_regresa_el_snapshot_de_fecha_mas_reciente(self):
+    def test_regresa_el_snapshot_de_fecha_mas_reciente_sin_campos_de_enlace(self):
         self._publica_indice({}, {"lfca": {"nombre": "LEY Federal de Cine y el Audiovisual"}})
         self._publica_tgz(
             "lfca",
@@ -330,6 +287,7 @@ class TestIterCurrentFederalLawsConIndice(ConCacheFixture):
                     {"archivo": "22-05-2026.md", "fecha_publicacion": "22-05-2026",
                      "codNota": 8888888},
                 ]),
+                "lfca/notas/nota-8888888.md": "DECRETO",
                 "lfca/05-01-1999.md": "TEXTO ORIGINAL",
                 "lfca/22-05-2026.md": "TEXTO VIGENTE",
             },
@@ -340,20 +298,15 @@ class TestIterCurrentFederalLawsConIndice(ConCacheFixture):
         self.assertEqual(ley["slug"], "lfca")
         self.assertEqual(ley["nombre"], "LEY Federal de Cine y el Audiovisual")
         self.assertEqual(ley["fecha_publicacion"], "22-05-2026")
-        self.assertEqual(ley["codNota"], 8888888)
+        self.assertEqual(ley["archivo"], "22-05-2026.md")
         self.assertEqual(ley["markdown"], "TEXTO VIGENTE")
+        self.assertNotIn("codNota", ley)
 
     def test_la_fecha_se_compara_como_fecha_no_como_texto(self):
-        self._publica_indice({}, {"lft": {"nombre": "LEY Federal del Trabajo"}})
+        self._publica_indice(None, {"lft": {"nombre": "LEY Federal del Trabajo"}})
         self._publica_tgz(
             "lft",
             **{
-                "lft/indice.json": json.dumps([
-                    {"archivo": "22-05-1998.md", "fecha_publicacion": "22-05-1998",
-                     "codNota": 1},
-                    {"archivo": "05-01-1999.md", "fecha_publicacion": "05-01-1999",
-                     "codNota": 2},
-                ]),
                 "lft/22-05-1998.md": "VIEJO",
                 "lft/05-01-1999.md": "NUEVO",
             },
@@ -365,16 +318,10 @@ class TestIterCurrentFederalLawsConIndice(ConCacheFixture):
         self.assertEqual(ley["markdown"], "NUEVO")
 
     def test_empate_de_fecha_desempata_por_archivo_deterministicamente(self):
-        self._publica_indice({}, {"cpeum": {"nombre": "CONSTITUCION"}})
+        self._publica_indice(None, {"cpeum": {"nombre": "CONSTITUCION"}})
         self._publica_tgz(
             "cpeum",
             **{
-                "cpeum/indice.json": json.dumps([
-                    {"archivo": "22-05-2026.md", "fecha_publicacion": "22-05-2026",
-                     "codNota": 1},
-                    {"archivo": "22-05-2026-2.md", "fecha_publicacion": "22-05-2026",
-                     "codNota": 2},
-                ]),
                 "cpeum/22-05-2026.md": "PRIMERA",
                 "cpeum/22-05-2026-2.md": "SEGUNDA",
             },
@@ -387,19 +334,9 @@ class TestIterCurrentFederalLawsConIndice(ConCacheFixture):
         self.assertEqual(primero[0]["archivo"], "22-05-2026.md")
 
     def test_slugs_respeta_el_orden_pedido(self):
-        self._publica_indice({}, {"lft": {"nombre": "LFT"}, "lfca": {"nombre": "LFCA"}})
-        self._publica_tgz("lft", **{
-            "lft/indice.json": json.dumps(
-                [{"archivo": "a.md", "fecha_publicacion": "01-01-2000", "codNota": 1}]
-            ),
-            "lft/a.md": "LFT",
-        })
-        self._publica_tgz("lfca", **{
-            "lfca/indice.json": json.dumps(
-                [{"archivo": "b.md", "fecha_publicacion": "01-01-2000", "codNota": 2}]
-            ),
-            "lfca/b.md": "LFCA",
-        })
+        self._publica_indice(None, {"lft": {"nombre": "LFT"}, "lfca": {"nombre": "LFCA"}})
+        self._publica_tgz("lft", **{"lft/01-01-2000.md": "LFT"})
+        self._publica_tgz("lfca", **{"lfca/01-01-2000.md": "LFCA"})
 
         resultado = list(
             release.iter_current_federal_laws(["lfca", "lft"], cache_dir=self.tmp)
@@ -408,13 +345,8 @@ class TestIterCurrentFederalLawsConIndice(ConCacheFixture):
         self.assertEqual([ley["slug"] for ley in resultado], ["lfca", "lft"])
 
     def test_es_generador_consumir_uno_no_abre_los_demas_tarballs(self):
-        self._publica_indice({}, {"lft": {"nombre": "LFT"}, "lfca": {"nombre": "LFCA"}})
-        self._publica_tgz("lft", **{
-            "lft/indice.json": json.dumps(
-                [{"archivo": "a.md", "fecha_publicacion": "01-01-2000", "codNota": 1}]
-            ),
-            "lft/a.md": "LFT",
-        })
+        self._publica_indice(None, {"lft": {"nombre": "LFT"}, "lfca": {"nombre": "LFCA"}})
+        self._publica_tgz("lft", **{"lft/01-01-2000.md": "LFT"})
         # lfca.tgz never written -- reading it would raise AssetNotCached.
 
         iterador = release.iter_current_federal_laws(["lft", "lfca"], cache_dir=self.tmp)
@@ -432,10 +364,10 @@ class TestIterCurrentFederalLawsConIndice(ConCacheFixture):
 
 
 class TestIterCurrentFederalLawsSinIndice(ConCacheFixture):
-    """A law that has been crawled but never linked yet: no `indice.json`,
-    so the winner comes from the raw snapshots' own file names."""
+    """A tarball as the packager writes it today: snapshots and `estado.json`
+    only, so the winner comes from the snapshots' own file names."""
 
-    def test_ley_sin_indice_usa_el_archivo_de_fecha_mas_reciente_y_codnota_none(self):
+    def test_ley_sin_indice_usa_el_archivo_de_fecha_mas_reciente(self):
         self._publica_tgz("lfea", **{
             "lfea/22-05-1998.md": "VIEJO",
             "lfea/05-01-1999.md": "NUEVO",
@@ -444,7 +376,7 @@ class TestIterCurrentFederalLawsSinIndice(ConCacheFixture):
 
         [ley] = list(release.iter_current_federal_laws(["lfea"], cache_dir=self.tmp))
 
-        self.assertIsNone(ley["codNota"])
+        self.assertNotIn("codNota", ley)
         self.assertEqual(ley["archivo"], "05-01-1999.md")
         self.assertEqual(ley["markdown"], "NUEVO")
 
@@ -458,12 +390,7 @@ class TestIterCurrentFederalLawsSlugsPorDefecto(ConCacheFixture):
 
     def test_sin_slugs_recorre_los_tgz_publicados(self):
         self._publica_indice({}, {"lft": {"nombre": "LFT"}})
-        self._publica_tgz("lft", **{
-            "lft/indice.json": json.dumps(
-                [{"archivo": "a.md", "fecha_publicacion": "01-01-2000", "codNota": 1}]
-            ),
-            "lft/a.md": "LFT",
-        })
+        self._publica_tgz("lft", **{"lft/01-01-2000.md": "LFT"})
 
         resultado = list(release.iter_current_federal_laws(cache_dir=self.tmp))
 
@@ -478,12 +405,7 @@ class TestIterCurrentFederalLawsSlugsPorDefecto(ConCacheFixture):
         """The index is a separate asset from the tarballs: a cache that
         never got it degrades `nombre` to `None` rather than raising (issue
         #205's DECISION 2, carried into scjn.release by issue #209)."""
-        self._publica_tgz("lft", **{
-            "lft/indice.json": json.dumps(
-                [{"archivo": "a.md", "fecha_publicacion": "01-01-2000", "codNota": 1}]
-            ),
-            "lft/a.md": "LFT",
-        })
+        self._publica_tgz("lft", **{"lft/01-01-2000.md": "LFT"})
 
         [ley] = list(release.iter_current_federal_laws(cache_dir=self.tmp))
 
@@ -734,28 +656,23 @@ class TestOffline(unittest.TestCase):
         self.release_dir.mkdir(parents=True)
         payload = {
             "generado": "x", "coleccion": "leyes",
-            "instrumentos": {"lft": {"nombre": "LFT"}}, "codNota": {
-                "1": [{"slug": "lft", "archivo": "a.md"}],
-            },
+            "instrumentos": {"lft": {"nombre": "LFT"}},
         }
         (self.release_dir / release.ASSET_INDICE_GLOBAL).write_bytes(
             gzip.compress(json.dumps(payload).encode("utf-8"))
         )
         (self.release_dir / "lft.tgz").write_bytes(_hacer_tgz({
-            "lft/indice.json": json.dumps(
-                [{"archivo": "a.md", "fecha_publicacion": "01-01-2000", "codNota": 1}]
-            ),
-            "lft/a.md": "LFT",
+            "lft/01-01-2000.md": "LFT",
             "lft/estado.json": json.dumps({"actualizado": "2020-01-01"}),
         }))
 
     @patch("requests.get", side_effect=ConnectionError("network unreachable"))
     def test_cada_lector_responde_sin_tocar_la_red(self, mock_get):
-        self.assertIn(1, release.download_scjn_leyes_index(cache_dir=self.tmp)["codNota"])
+        self.assertIn("lft", release.download_scjn_leyes_index(cache_dir=self.tmp)["instrumentos"])
         self.assertEqual(
             release.download_scjn_leyes_corpus("lft", cache_dir=self.tmp)["slug"], "lft"
         )
-        self.assertEqual(release.markdown_de_snapshot("lft", "a.md", cache_dir=self.tmp), "LFT")
+        self.assertEqual(release.markdown_de_snapshot("lft", "01-01-2000.md", cache_dir=self.tmp), "LFT")
         self.assertEqual(release.local_slugs(self.tmp), ["lft"])
         [ley] = list(release.iter_current_federal_laws(cache_dir=self.tmp))
         self.assertEqual(ley["slug"], "lft")
@@ -771,15 +688,115 @@ if __name__ == "__main__":
     unittest.main()
 
 
+class TestClasificacionPorLey(ConCacheFixture):
+    """Issue #8: `categoria_ordenamiento`, `ambito`, `pais`, `estado` and
+    `municipio` (`CAMPOS_CLASIFICACION`) travel the same way as
+    `CAMPOS_METADATOS` -- into `instrumentos` and back out of every reader --
+    and an index published before they existed neither fails nor invents a
+    value."""
+
+    CLASIFICACION = {
+        "categoria_ordenamiento": "LEY", "ambito": "FEDERAL", "pais": "MEXICO",
+        "estado": "JALISCO", "municipio": "GUADALAJARA",
+    }
+
+    def test_la_tupla_es_la_documentada(self):
+        self.assertEqual(
+            release.CAMPOS_CLASIFICACION,
+            ("categoria_ordenamiento", "ambito", "pais", "estado", "municipio"),
+        )
+        self.assertEqual(release.CAMPOS_CLASIFICACION[0], release.CAMPO_CATEGORIA_ORDENAMIENTO)
+
+    def test_construye_indice_global_los_copia_a_instrumentos(self):
+        indice = release.construye_indice_global(
+            [{"slug": "lft", "nombre": "LEY Federal del Trabajo",
+              **self.CLASIFICACION}],
+            generado="x",
+        )
+
+        self.assertEqual(
+            {c: indice["instrumentos"]["lft"][c] for c in release.CAMPOS_CLASIFICACION},
+            self.CLASIFICACION,
+        )
+
+    def test_construye_indice_global_omite_lo_que_no_tiene_valor(self):
+        indice = release.construye_indice_global(
+            [{"slug": "lft", "nombre": "LFT",
+              "categoria_ordenamiento": "LEY", "ambito": "FEDERAL", "pais": None,
+              "estado": ""}],
+            generado="x",
+        )
+
+        entrada = indice["instrumentos"]["lft"]
+        self.assertEqual(entrada["categoria_ordenamiento"], "LEY")
+        self.assertEqual(entrada["ambito"], "FEDERAL")
+        for campo in ("pais", "estado", "municipio"):
+            self.assertNotIn(campo, entrada)
+
+    def test_indice_por_id_los_copia_y_omite_los_ausentes(self):
+        indice = release.construye_indice_global_tratados(
+            [{"id_ordenamiento": "1", "nombre": "T", "snapshots": 1, **self.CLASIFICACION},
+             {"id_ordenamiento": "2", "nombre": "U", "snapshots": 1, "pais": "FRANCIA"}],
+            generado="x",
+        )
+
+        completo, parcial = indice["instrumentos"]["1"], indice["instrumentos"]["2"]
+        self.assertEqual(
+            {c: completo[c] for c in release.CAMPOS_CLASIFICACION}, self.CLASIFICACION
+        )
+        self.assertEqual(parcial["pais"], "FRANCIA")
+        for campo in ("categoria_ordenamiento", "ambito", "estado", "municipio"):
+            self.assertNotIn(campo, parcial)
+
+    def test_el_catalogo_y_el_lector_devuelven_los_cinco_campos(self):
+        self._publica_indice({}, {"lft": {
+            "nombre": "LFT", "asset": "lft.tgz", "snapshots": 1, **self.CLASIFICACION,
+        }})
+        self._publica_tgz("lft", **{"lft/01-05-2019.md": "LFT"})
+
+        [entrada] = release.download_scjn_leyes_catalog(freshness=False, cache_dir=self.tmp)
+        [ley] = list(release.iter_current_federal_laws(cache_dir=self.tmp))
+
+        for campo, valor in self.CLASIFICACION.items():
+            self.assertEqual(entrada[campo], valor)
+            self.assertEqual(ley[campo], valor)
+
+    def test_un_indice_anterior_no_falla_ni_inventa(self):
+        # An index published before #8: no classification key anywhere.
+        self._publica_indice({}, {"lft": {"nombre": "LFT", "asset": "lft.tgz",
+                                          "snapshots": 1, "vigencia": "VIGENTE"}})
+        self._publica_tgz("lft", **{"lft/01-05-2019.md": "LFT"})
+
+        [entrada] = release.download_scjn_leyes_catalog(freshness=False, cache_dir=self.tmp)
+        [ley] = list(release.iter_current_federal_laws(cache_dir=self.tmp))
+
+        self.assertEqual(entrada, {"abrev": "lft", "nombre": "LFT", "vigencia": "VIGENTE"})
+        for campo in release.CAMPOS_CLASIFICACION:
+            self.assertIsNone(ley[campo])
+
+    def test_el_estado_json_del_tarball_aporta_la_clasificacion_al_catalogo(self):
+        self._publica_indice({}, {"lft": {"nombre": "LFT", "asset": "lft.tgz", "snapshots": 1}})
+        self._publica_tgz("lft", **{"lft/estado.json": json.dumps({
+            "actualizado": "2026-05-14", "ambito": "FEDERAL", "estado": "JALISCO",
+            "categoria_ordenamiento": "LEY"})})
+
+        [entrada] = release.download_scjn_leyes_catalog(cache_dir=self.tmp)
+
+        self.assertEqual(entrada["ambito"], "FEDERAL")
+        self.assertEqual(entrada["estado"], "JALISCO")
+        self.assertEqual(entrada["categoria_ordenamiento"], "LEY")
+        self.assertEqual(entrada["actualizado"], "2026-05-14")
+
+
 class TestMetadatosPorLey(ConCacheFixture):
     """Issue #215: `materia`/`vigencia`/`resumen` — one value per law, off
     the SCJN's own search — travel in `instrumentos` and come back out of
     both readers."""
 
     def test_construye_indice_global_los_copia_a_instrumentos(self):
-        indice, _ = release.construye_indice_global(
+        indice = release.construye_indice_global(
             [{
-                "slug": "lft", "nombre": "LEY Federal del Trabajo", "indice": [],
+                "slug": "lft", "nombre": "LEY Federal del Trabajo",
                 "materia": "SEGURIDAD SOCIAL, LABORAL", "vigencia": "VIGENTE",
                 "resumen": "Ley que rige las relaciones de trabajo.",
             }],
@@ -795,9 +812,9 @@ class TestMetadatosPorLey(ConCacheFixture):
     def test_un_campo_sin_valor_queda_ausente_no_en_none(self):
         # La SCJN no tiene resumen para `lfca`; el asset no crece 315 nulls
         # mientras se rellenan los campos.
-        indice, _ = release.construye_indice_global(
+        indice = release.construye_indice_global(
             [{"slug": "lfca", "nombre": "LEY Federal de Cine y el Audiovisual",
-              "indice": [], "materia": "ADMINISTRATIVO", "vigencia": "VIGENTE",
+              "materia": "ADMINISTRATIVO", "vigencia": "VIGENTE",
               "resumen": None}],
             generado="x",
         )
@@ -841,12 +858,7 @@ class TestMetadatosPorLey(ConCacheFixture):
             "nombre": "LEY Federal del Trabajo", "asset": "lft.tgz", "snapshots": 1,
             "materia": "SEGURIDAD SOCIAL, LABORAL", "vigencia": "VIGENTE",
         }})
-        self._publica_tgz("lft", **{
-            "lft/indice.json": json.dumps(
-                [{"archivo": "a.md", "fecha_publicacion": "01-05-2019", "codNota": 1}]
-            ),
-            "lft/a.md": "LFT",
-        })
+        self._publica_tgz("lft", **{"lft/01-05-2019.md": "LFT"})
 
         [ley] = list(release.iter_current_federal_laws(cache_dir=self.tmp))
 
@@ -1375,7 +1387,9 @@ class TestIdKeyedWrappers(unittest.TestCase):
         (directorio / f"{id_ordenamiento}.tgz").write_bytes(_hacer_tgz(archivos))
 
     def test_every_collection_of_the_registry_is_covered_by_a_wrapper_set(self):
-        self.assertEqual(sorted(COLECCIONES_POR_ID), ["lineamientos", "reglamentos", "tratados"])
+        self.assertEqual(
+            sorted(COLECCIONES_POR_ID), ["estatutos", "lineamientos", "reglamentos", "tratados"]
+        )
 
     @_por_coleccion
     def test_construye_indice_global_no_lleva_codnota_y_solo_indexa_asset_si_hay_texto(self, nombre, cache, directorio, f):
@@ -1491,6 +1505,37 @@ class TestIdKeyedWrappers(unittest.TestCase):
         self.assertEqual(instrumento["nombre"], "X")
         self.assertNotIn("abrev", instrumento)
 
+    def test_estatutos_sin_nada_en_cache_lanzan_asset_not_cached_sin_tocar_la_red(self):
+        # Issue #9: `scjn-estatutos` is not published yet, so the first thing every
+        # reader meets is a cold cache; none of them may make a request.
+        with patch("requests.get", side_effect=ConnectionError("network unreachable")) as mock_get:
+            with self.assertRaises(release.AssetNotCached) as ctx:
+                release.download_scjn_estatutos_index(cache_dir=self.tmp)
+            self.assertIn("--coleccion estatutos", str(ctx.exception))
+            with self.assertRaises(release.AssetNotCached):
+                release.download_scjn_estatutos_corpus("5001", cache_dir=self.tmp)
+            # Like its lineamientos sibling: walking "what this machine has" over an empty
+            # cache yields nothing, and naming an id that is not cached raises.
+            self.assertEqual(list(release.iter_current_estatutos(cache_dir=self.tmp)), [])
+            with self.assertRaises(release.AssetNotCached):
+                list(release.iter_current_estatutos(["5001"], cache_dir=self.tmp))
+            self.assertEqual(release.local_estatutos_ids(self.tmp), [])
+        mock_get.assert_not_called()
+
+    def test_el_indice_de_estatutos_lleva_la_clasificacion(self):
+        indice = release.construye_indice_global_estatutos(
+            [{"id_ordenamiento": "5001", "nombre": "ESTATUTO ORGANICO", "snapshots": 1,
+              "categoria_ordenamiento": "ESTATUTO", "ambito": "FEDERAL", "pais": "MÉXICO"}],
+            generado="x",
+        )
+
+        entrada = indice["instrumentos"]["5001"]
+        self.assertEqual(
+            (entrada["categoria_ordenamiento"], entrada["ambito"], entrada["pais"]),
+            ("ESTATUTO", "FEDERAL", "MÉXICO"),
+        )
+        self.assertNotIn("estado", entrada)
+
     def test_reexportados_desde_el_paquete(self):
         import scjn
 
@@ -1501,7 +1546,7 @@ class TestIdKeyedWrappers(unittest.TestCase):
                 with self.subTest(funcion=funcion):
                     self.assertIn(funcion, scjn.__all__)
                     self.assertTrue(callable(getattr(scjn, funcion)))
-        self.assertEqual(scjn.__version__, "0.5.1")
+        self.assertEqual(scjn.__version__, "0.6.0")
 
 
 class TestIterCurrentPorId(ConCacheFixtureReglamentos):
@@ -1537,6 +1582,25 @@ class TestIterCurrentPorId(ConCacheFixtureReglamentos):
         self.assertEqual(reglamento["nombre"], "REGLAMENTO")
         self.assertEqual(reglamento["materia"], "ADMINISTRATIVO")
         self.assertEqual(reglamento["vigencia"], "VIGENTE")
+
+    def test_devuelve_la_clasificacion_o_none_en_un_indice_anterior(self):
+        self._publica_indice({
+            "1": {"nombre": "NUEVO", "asset": "1.tgz", "snapshots": 1,
+                  "categoria_ordenamiento": "ACUERDO (S)", "ambito": "FEDERAL",
+                  "pais": "MEXICO"},
+            "2": {"nombre": "VIEJO", "asset": "2.tgz", "snapshots": 1},
+        })
+        self._publica_tgz("1", **{"1/01-01-2000.md": "x"})
+        self._publica_tgz("2", **{"2/01-01-2000.md": "y"})
+
+        nuevo, viejo = list(release.iter_current_reglamentos(cache_dir=self.tmp))
+
+        self.assertEqual(nuevo["categoria_ordenamiento"], "ACUERDO (S)")
+        self.assertEqual(nuevo["ambito"], "FEDERAL")
+        self.assertEqual(nuevo["pais"], "MEXICO")
+        self.assertIsNone(nuevo["estado"])
+        for campo in release.CAMPOS_CLASIFICACION:
+            self.assertIsNone(viejo[campo])
 
     def test_nunca_trae_codnota_ni_abrev(self):
         # No hay enlace a DOF para estas colecciones (#220), asi que el

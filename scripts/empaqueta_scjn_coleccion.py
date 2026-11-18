@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 """Package an id-keyed SCJN corpus (`reglamentos`, issue #220; `lineamientos`,
-issue #222; `tratados`, issue #277) into one byte-reproducible tarball *per instrument with text*,
-plus a human-readable manifest and a checksum file. Shared by the three
+issue #222; `tratados`, issue #277; `estatutos`, issue #9) into one byte-reproducible tarball *per instrument with text*,
+plus a human-readable manifest and a checksum file. Shared by the four
 id-keyed collections (generalized out of the `reglamentos`-only
-`empaqueta_scjn_reglamentos.py` in issue #222's Fase 0), without
-`indice.json`/`notas/` or a `codNota` section: none of them has DOF linking,
-so every ``<id_ordenamiento>.tgz`` ships only ``<id_ordenamiento>/<fecha>.md``
+`empaqueta_scjn_reglamentos.py` in issue #222's Fase 0). Every
+``<id_ordenamiento>.tgz`` ships only ``<id_ordenamiento>/<fecha>.md``
 and ``<id_ordenamiento>/estado.json``.
 
 ## Manual publish only — never automated
@@ -41,9 +40,8 @@ sequence lives.
 
 No `abrev` (no id-keyed collection has one, issue #220's own decision 3: the
 SCJN reissues an instrument as a brand-new `idOrdenamiento` rather than as a
-reform of the previous one, so a title-derived key would collide), no
-`indice.json`, no `notas/` -- nothing here depends on a DOF link that does
-not exist for any of them.
+reform of the previous one, so a title-derived key would collide), nothing
+here carries anything but SCJN data.
 
 ## An instrument with no consolidated text ships no tarball (decision 6)
 
@@ -92,10 +90,11 @@ from scjn.catalog import instrumento_key  # noqa: E402
 from scjn.header import versiones_de_directorio  # noqa: E402
 from scjn.release import (  # noqa: E402
     ASSET_INDICE_GLOBAL,
-    CAMPO_CATEGORIA_ORDENAMIENTO,
+    CAMPOS_CLASIFICACION,
     CAMPOS_METADATOS,
     LIMITE_ASSETS_POR_RELEASE,
     _tag_de_parte,
+    construye_indice_global_estatutos,
     construye_indice_global_lineamientos,
     construye_indice_global_reglamentos,
     construye_indice_global_tratados,
@@ -105,11 +104,12 @@ from scjn.state import lee_estado  # noqa: E402
 
 #: Each id-keyed collection's own index builder -- keyed by
 #: `Coleccion.nombre`, same shape as `scjn.cli`'s own `_DESCARGAS_POR_ID`. A
-#: fourth id-keyed collection adds one entry here, never a new branch.
+#: further id-keyed collection adds one entry here, never a new branch.
 _INDICES_POR_ID = {
     "reglamentos": construye_indice_global_reglamentos,
     "lineamientos": construye_indice_global_lineamientos,
     "tratados": construye_indice_global_tratados,
+    "estatutos": construye_indice_global_estatutos,
 }
 
 #: GitHub's release-body cap (issue #223) -- `MANIFEST.md` grows with the
@@ -303,8 +303,7 @@ def _advierte_si_falta_partes_json(destino: Path, partes_originales: list[dict],
 
 def _archivos_instrumento(directorio: Path) -> list[Path]:
     """Every file worth shipping for one instrument: its snapshot `.md`
-    files and its own `estado.json` -- no `indice.json`/`notas/` here at
-    all (neither collection has DOF linking, issue #220's own Scope). A
+    files and its own `estado.json`. A
     hidden bookkeeping file (a `.progreso.json`-style checkpoint) is never
     shipped."""
     return sorted(
@@ -361,8 +360,8 @@ def escribe_indice_global(
     destino: Path, coleccion: str, resumenes: list[ResumenInstrumento], generado: str
 ) -> None:
     """Write `indice-global.json.gz` -- the shared sibling of
-    `empaqueta_scjn_leyes.escribe_indice_global`, with no `codNota` section
-    and no published-index fallback (this release does not exist until
+    `empaqueta_scjn_leyes.escribe_indice_global`, with no
+    published-index fallback (this release does not exist until
     this run publishes it, unlike `scjn-leyes` which a metadata backfill
     can patch after the fact).
 
@@ -381,7 +380,7 @@ def escribe_indice_global(
                 "snapshots": r.total_snapshots,
                 **{
                     campo: (r.estado or {}).get(campo)
-                    for campo in (CAMPO_CATEGORIA_ORDENAMIENTO, *CAMPOS_METADATOS)
+                    for campo in (*CAMPOS_CLASIFICACION, *CAMPOS_METADATOS)
                 },
             }
             for r in resumenes
@@ -589,10 +588,6 @@ def _formatea_manifiesto(coleccion: str, resumenes: list[ResumenInstrumento],
         "",
         f"{total_catalogo} instrumento(s) en el catálogo (`{coleccion}`); "
         f"{len(resumenes)} ya rastreado(s) por la SCJN.",
-        "",
-        "Sin enlace a DOF (issue #220, Scope): no hay `indice.json` por instrumento "
-        "ni sección `codNota` en el índice global -- el enlace se implementa en un "
-        f"issue futuro, para {coleccion} y leyes por igual.",
         "",
     ]
     lineas.extend(_seccion_partes_manifiesto(partes or []))

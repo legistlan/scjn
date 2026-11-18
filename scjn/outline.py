@@ -58,7 +58,7 @@ import nothing from here. They are tied by *data*, not by code:
 `tests/fixtures_units/marker_vocabulary.json` of `md2akn`'s own repository, generated from this
 module by `scripts/verify_scjn_outline.py --write-vocabulary` (one example marker
 per `classify` branch, the kinds and container types, the real distribution over
-the four corpora), is regenerated and compared here and parsed by `md2akn`'s tests.
+the five corpora), is regenerated and compared here and parsed by `md2akn`'s tests.
 `scripts/verify_scjn_outline.py` checks the other direction over every snapshot on
 disk: each marker round-trips through `marker_line`/`parse_marker`, equals `classify`
 of its label, and `strip_markers` of the rebuilt body is the `outline=False` text.

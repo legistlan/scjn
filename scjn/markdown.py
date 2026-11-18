@@ -45,8 +45,8 @@ if TYPE_CHECKING:  # pragma: no cover
     from scjn.api import Articulo
 
 # Hard rule: the on-disk format does not change. `scripts/scjn/`'s whole
-# corpus, its `indice.json`, `empaqueta_scjn_leyes.py`, `snapshot_de_codNota`
-# and `legal_provisions(source="scjn")` all read what the retired
+# corpus, `empaqueta_scjn_leyes.py` and the readers of `scjn.release` all
+# read what the retired
 # `scjn.descarga_ordenamiento` wrote, and the migration is only auditable while a snapshot written
 # from the API can be diffed against the one the WebForms crawler wrote for
 # the same law and the same date.

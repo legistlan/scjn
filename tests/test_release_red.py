@@ -2,7 +2,7 @@
 
 An integration test, not a unit test: it downloads `indice-global.json.gz` and
 one law's own tarball over the network, so it is excluded from the routine
-run the same way `nota2md`'s `test_leyes_44.py` is from its own:
+run:
 
     pytest tests -q --ignore=tests/test_release_red.py --ignore=tests/test_api_red.py
 
@@ -11,16 +11,21 @@ CI runs it in its own `network` job (`test.yml`).
 What it is here to catch is the one thing no fabricated tarball can: that the
 asset actually published matches what the readers expect — a corpus
 re-packaged without re-uploading `indice-global.json.gz` (see
-`scripts/empaqueta_scjn_leyes.py`, and issue #148) resolves a codNota to a
-snapshot file that is no longer in the law's tarball, and that shows up here
-and nowhere else.
+`scripts/empaqueta_scjn_leyes.py`, and issue #148) lists a law whose tarball
+no longer matches, and that shows up here and nowhere else. The published
+releases hold SCJN data only: the `scjn-leyes` index has no `codNota` section
+and a tarball has no `indice.json` and no `notas/` (the readers' tolerance of
+that old shape, for an old copy in a cache or a mirror, is covered offline by
+`tests/test_release.py`). The published indexes carry the SCJN's
+classification, and `scjn-estatutos` is a published release like the others.
 
-`lfca` is the law used because it is small (10 snapshots) and because it is
+`lfca` is the law used because it is small (one snapshot) and because it is
 one of the two the SCJN does not index at all — its snapshots were built by
 hand from the DOF (issue #144), so it also exercises the least typical entry
 in the corpus.
 """
 
+import tarfile
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -33,6 +38,10 @@ from scjn.release import (
     _assets_de_release,
     _tag_de_parte,
     download_scjn_leyes_assets,
+    download_scjn_leyes_corpus,
+    download_scjn_estatutos_assets,
+    download_scjn_estatutos_corpus,
+    download_scjn_estatutos_index,
     download_scjn_leyes_index,
     download_scjn_reglamentos_assets,
     download_scjn_reglamentos_index,
@@ -73,29 +82,84 @@ class TestReleaseReal(unittest.TestCase):
         self.assertEqual(self.indice["coleccion"], "leyes")
         self.assertIn(SLUG, self.indice["instrumentos"])
 
-    def test_las_claves_del_indice_publicado_son_enteros(self):
-        self.assertTrue(all(isinstance(cod, int) for cod in self.indice["codNota"]))
+    def test_el_indice_publicado_no_trae_seccion_codnota(self):
+        # Not only the reader's output: the published asset itself has none.
+        import gzip
+        import json
+
+        crudo = json.loads(gzip.decompress(
+            (self.cache_dir / "scjn-leyes" / "indice-global.json.gz").read_bytes()
+        ).decode("utf-8"))
+        self.assertNotIn("codNota", crudo)
+        self.assertNotIn("codNota", self.indice)
+
+    def test_el_indice_publicado_trae_la_clasificacion_de_lfca(self):
+        entrada = self.indice["instrumentos"][SLUG]
+        self.assertEqual(entrada["categoria_ordenamiento"], "LEY")
+        self.assertEqual(entrada["ambito"], "FEDERAL")
 
     def test_el_indice_se_cacheo_en_disco(self):
         self.assertTrue((self.cache_dir / "scjn-leyes" / "indice-global.json.gz").is_file())
 
-    def _un_codnota_de_lfca(self) -> tuple[int, str]:
-        for cod, entradas in self.indice["codNota"].items():
-            if len(entradas) == 1 and entradas[0]["slug"] == SLUG:
-                return cod, entradas[0]["archivo"]
-        self.skipTest(f"el indice publicado no enlaza ningun codNota solo a {SLUG}")
-
-    def test_resuelve_un_codnota_de_lfca_a_su_snapshot_publicado(self):
-        _, archivo = self._un_codnota_de_lfca()
-        # markdown_de_snapshot needs the law's own tarball cached too --
-        # setUpClass only downloaded the (much smaller) index.
+    def test_lee_el_snapshot_mas_reciente_de_lfca_sin_campos_de_enlace(self):
+        # The law's own tarball is not cached yet -- setUpClass only
+        # downloaded the (much smaller) index.
         download_scjn_leyes_assets([SLUG], cache_dir=self.cache_dir)
 
+        snapshots = download_scjn_leyes_corpus(SLUG, cache_dir=self.cache_dir)["snapshots"]
+        archivo = snapshots[-1]["archivo"]
         markdown = markdown_de_snapshot(SLUG, archivo, cache_dir=self.cache_dir)
 
         self.assertTrue(archivo.endswith(".md"))
+        # The published tarball holds the snapshots and `estado.json` only.
+        with tarfile.open(self.cache_dir / "scjn-leyes" / f"{SLUG}.tgz") as tar:
+            miembros = {m.name for m in tar.getmembers() if m.isfile()}
+        self.assertNotIn(f"{SLUG}/indice.json", miembros)
+        self.assertFalse([m for m in miembros if "/notas/" in m])
+        self.assertIn(f"{SLUG}/estado.json", miembros)
+        for snapshot in snapshots:
+            self.assertEqual(set(snapshot), {"archivo", "fecha_publicacion", "markdown"})
         # Lo que hace auditable el resultado: la cabecera de procedencia.
         self.assertIn("fuente: scjn", markdown)
+
+
+class TestReleaseRealEstatutos(unittest.TestCase):
+    """`scjn-estatutos`, published on 2026-11-17, reads like the other id-keyed
+    releases: its index downloads and one instrument (`111330`, with text)
+    reads back. Only the index and that one tarball are downloaded."""
+
+    ID = "111330"
+
+    @classmethod
+    def setUpClass(cls):
+        cls._dir = TemporaryDirectory()
+        cls.cache_dir = Path(cls._dir.name)
+        try:
+            download_scjn_estatutos_assets([cls.ID], cache_dir=cls.cache_dir)
+        except (AssetNotCached, KeyError) as exc:
+            cls._dir.cleanup()
+            raise unittest.SkipTest(f"el release aun no publica el indice: {exc}")
+
+    @classmethod
+    def tearDownClass(cls):
+        cls._dir.cleanup()
+
+    def test_el_indice_publicado_declara_la_coleccion_de_estatutos(self):
+        indice = download_scjn_estatutos_index(cache_dir=self.cache_dir)
+        self.assertEqual(indice["coleccion"], "estatutos")
+        self.assertNotIn("codNota", indice)
+        entrada = indice["instrumentos"][self.ID]
+        self.assertEqual(entrada["asset"], f"{self.ID}.tgz")
+        self.assertEqual(entrada["categoria_ordenamiento"], "ESTATUTO")
+        self.assertEqual(entrada["ambito"], "FEDERAL")
+
+    def test_lee_un_estatuto_con_su_cabecera_de_procedencia(self):
+        corpus = download_scjn_estatutos_corpus(self.ID, cache_dir=self.cache_dir)
+        self.assertEqual(corpus["id_ordenamiento"], self.ID)
+        self.assertTrue(corpus["snapshots"])
+        for snapshot in corpus["snapshots"]:
+            self.assertEqual(set(snapshot), {"archivo", "fecha_publicacion", "markdown"})
+            self.assertIn("fuente: scjn", snapshot["markdown"])
 
 
 class TestPartesScjnReglamentos(unittest.TestCase):

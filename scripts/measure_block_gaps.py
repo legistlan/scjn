@@ -21,7 +21,7 @@ values, the gap is *explained* (the block was served and wrote nothing) and coun
 apart; only a gap the raw answer does not explain, or one with no raw answer at all,
 is an omission and fails the run.
 
-    ./scripts/measure_block_gaps.py                 # all four collections
+    ./scripts/measure_block_gaps.py                 # all five collections
     ./scripts/measure_block_gaps.py --coleccion tratados --verbose
     ./scripts/measure_block_gaps.py --json /tmp/gaps-before.json
 
@@ -39,7 +39,7 @@ import sys
 from pathlib import Path
 
 MARKER = re.compile(r"^<!-- scjn:block orden=(\d+) ", re.MULTILINE)
-COLLECTIONS = ("leyes", "reglamentos", "lineamientos", "tratados")
+COLLECTIONS = ("leyes", "reglamentos", "lineamientos", "tratados", "estatutos")
 
 
 def missing_orden(markdown: str) -> list[int]:
@@ -91,7 +91,9 @@ def measure(outdir: Path, collection: str, ledger_name: str, raw_dir: Path) -> d
     offenders: dict[str, dict[str, list[int]]] = {}
     total_snapshots = 0
     explained: dict[tuple[str, str], list[int]] = {}
-    for directory in sorted(p for p in base.iterdir() if p.is_dir() and not p.name.startswith(".")):
+    # A collection not crawled yet (`estatutos`, issue #9) has no directory: it measures as empty.
+    directories = sorted(p for p in base.iterdir() if p.is_dir() and not p.name.startswith(".")) if base.is_dir() else []
+    for directory in directories:
         gaps = {}
         for path in sorted(directory.glob("*.md")):
             total_snapshots += 1

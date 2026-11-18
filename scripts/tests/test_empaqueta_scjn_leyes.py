@@ -57,10 +57,12 @@ class CorpusTemporal(unittest.TestCase):
         (self.ley / "estado.json").write_text(self.estado_en_disco)
 
     def empaqueta(self, solo=None):
-        resumenes, nunca = emp.resume_coleccion(self.outdir)
-        emp.empaqueta(self.outdir, self.destino, resumenes, solo=solo)
-        # No published index in the (empty) cache directory.
+        # No published index in the (empty) cache directory: the result must not depend on
+        # whatever this machine has cached (a cached `lfca` index used to hide a missing
+        # `nombre` locally while CI, with an empty cache, failed).
         with patch("scjn.cache.CACHE_DIR", self.tmp / "cache-vacio"):
+            resumenes, nunca = emp.resume_coleccion(self.outdir)
+            emp.empaqueta(self.outdir, self.destino, resumenes, solo=solo)
             bytes_indice = emp.escribe_indice_global(self.destino, resumenes, "2026-11-17T00:00:00+00:00")
         return resumenes, nunca, bytes_indice
 
@@ -105,7 +107,9 @@ class TestTarball(CorpusTemporal):
         self.assertTrue((self.ley / "notas" / "nota-1.md").is_file())
 
     def test_un_estado_ya_publicable_viaja_byte_por_byte(self):
-        limpio = json.dumps({"abrev": "lfca", "actualizado": "2026-05-22"})  # not even normalized
+        limpio = json.dumps(  # not even normalized
+            {"abrev": "lfca", "nombre": "LEY Federal de Cine", "actualizado": "2026-05-22"}
+        )
         (self.ley / "estado.json").write_text(limpio)
 
         self.empaqueta()

@@ -7,9 +7,10 @@ GitHub releases this package feeds -- `scjn-leyes` and, since issues #220,
 `scjn-tratados`/`scjn-estatutos` -- re-exported
 here as the package's own entry points.
 
-The SCJN is not an official source of legal text — the Diario Oficial de la
-Federación remains that; this package's own crawl is a convenience corpus
-its consolidated view makes possible, not a replacement for it.
+The texts are editorial: the Official Gazette of the Federation (DOF)
+remains the official source of Mexican legal text. The SCJN publishes each
+instrument as a complete text that incorporates its reforms; this package
+writes those texts as dated snapshots, never as a replacement for the DOF.
 
 This package holds SCJN data only: nothing in it, or in the releases it
 reads, links a snapshot to the Diario Oficial de la Federación note that
@@ -48,7 +49,7 @@ from scjn.release import (
     markdown_de_snapshot,
 )
 
-__version__ = "0.6.0"
+__version__ = "0.7.0"
 
 __all__ = [
     "download_scjn_leyes_corpus",

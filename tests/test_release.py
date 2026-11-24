@@ -18,7 +18,7 @@ from unittest.mock import patch
 import requests
 
 from scjn import release
-from scjn.cache import COLECCIONES_POR_ID
+from scjn.cache import COLECCIONES_POR_ID, COLLECTION_CLI_NAMES
 
 
 def _hacer_tgz(archivos: dict) -> bytes:
@@ -884,14 +884,14 @@ class TestAssetNotCachedReglamentos(unittest.TestCase):
         self.assertEqual(
             str(exc),
             "'104906.tgz' is not cached under /x -- run "
-            "`scjn download --coleccion reglamentos --id 104906`",
+            "`scjn download --collection regulations --id 104906`",
         )
 
     def test_mensaje_de_reglamentos_para_el_indice(self):
         exc = release.AssetNotCached(
             release.ASSET_INDICE_GLOBAL, Path("/x"), coleccion="reglamentos"
         )
-        self.assertIn("scjn download --coleccion reglamentos", str(exc))
+        self.assertIn("scjn download --collection regulations", str(exc))
         self.assertNotIn("--id", str(exc))
 
 
@@ -987,7 +987,7 @@ class TestDownloadScjnReglamentosIndex(ConCacheFixtureReglamentos):
         with self.assertRaises(release.AssetNotCached) as ctx:
             release.download_scjn_reglamentos_index(cache_dir=self.tmp)
 
-        self.assertIn("scjn download --coleccion reglamentos", str(ctx.exception))
+        self.assertIn("scjn download --collection regulations", str(ctx.exception))
 
 
 class TestDownloadScjnReglamentosCorpus(ConCacheFixtureReglamentos):
@@ -1483,7 +1483,7 @@ class TestIdKeyedWrappers(unittest.TestCase):
         self.assertEqual(
             str(exc),
             f"'{self.ID_CON_TEXTO}.tgz' is not cached under /x -- run "
-            f"`scjn download --coleccion {nombre} --id {self.ID_CON_TEXTO}`",
+            f"`scjn download --collection {COLLECTION_CLI_NAMES[nombre]} --id {self.ID_CON_TEXTO}`",
         )
 
     @_por_coleccion
@@ -1511,7 +1511,7 @@ class TestIdKeyedWrappers(unittest.TestCase):
         with patch("requests.get", side_effect=ConnectionError("network unreachable")) as mock_get:
             with self.assertRaises(release.AssetNotCached) as ctx:
                 release.download_scjn_estatutos_index(cache_dir=self.tmp)
-            self.assertIn("--coleccion estatutos", str(ctx.exception))
+            self.assertIn("--collection bylaws", str(ctx.exception))
             with self.assertRaises(release.AssetNotCached):
                 release.download_scjn_estatutos_corpus("5001", cache_dir=self.tmp)
             # Like its lineamientos sibling: walking "what this machine has" over an empty
@@ -1546,7 +1546,7 @@ class TestIdKeyedWrappers(unittest.TestCase):
                 with self.subTest(funcion=funcion):
                     self.assertIn(funcion, scjn.__all__)
                     self.assertTrue(callable(getattr(scjn, funcion)))
-        self.assertEqual(scjn.__version__, "0.6.0")
+        self.assertEqual(scjn.__version__, "0.7.0")
 
 
 class TestIterCurrentPorId(ConCacheFixtureReglamentos):

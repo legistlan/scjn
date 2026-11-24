@@ -3,16 +3,27 @@
 [![test](https://github.com/legistlan/scjn/actions/workflows/test.yml/badge.svg)](https://github.com/legistlan/scjn/actions/workflows/test.yml)
 [![PyPI](https://badge.fury.io/py/scjn.svg)](https://badge.fury.io/py/scjn)
 
-Client for the SCJN's SCOW JSON API (`https://legislacion.scjn.gob.mx`), the writer of its Markdown
-snapshots and reader of the five SCJN GitHub releases: `scjn-leyes` (a Mexican federal law's
-reform-dated snapshots, keyed by `abrev`) and the id-keyed `scjn-reglamentos`, `scjn-lineamientos`,
-`scjn-tratados` and `scjn-estatutos` (keyed by `id_ordenamiento`; international treaties are the SCJN's
-*ámbito* `TRATADOS INTERNACIONALES`, any category; estatutos are the federal instruments the SCJN
-classifies `ESTATUTO`). All five releases are published (see [the releases](#the-releases-owner)). Each snapshot carries a `fuente: scjn` provenance header.
-The SCJN is **not** an official source of legal text — the *Diario Oficial de la Federación* (DOF)
-remains that; this package's crawl is a convenience corpus the SCJN's own consolidated view makes
-possible, never a replacement for it. This repository and its releases hold SCJN data only: no link to
-the DOF note that published a snapshot (`codNota`), no DOF text and no DOF date. That DOF linking lives
+The Supreme Court of Justice of the Nation (SCJN) publishes Mexican legal instruments as complete
+texts that incorporate their reforms, and keeps, for every instrument, the text as it read after
+each reform. `scjn` is the client for the SCJN's SCOW JSON API (`https://legislacion.scjn.gob.mx`),
+the writer of those texts as dated Markdown snapshots and the reader of the five GitHub releases
+that publish them:
+
+| Collection | Release | Keyed by |
+|---|---|---|
+| laws | `scjn-leyes` | `abrev` (the slug) |
+| regulations | `scjn-reglamentos` | `id_ordenamiento` |
+| guidelines | `scjn-lineamientos` | `id_ordenamiento` |
+| treaties (the SCJN's *ámbito* `TRATADOS INTERNACIONALES`, any category) | `scjn-tratados` | `id_ordenamiento` |
+| bylaws (the federal instruments the SCJN classifies `ESTATUTO`) | `scjn-estatutos` | `id_ordenamiento` |
+
+All five releases are published (see [the releases](#the-releases-owner)). A snapshot is a dated
+version of an instrument: its text as it read after one reform. Each one carries a `fuente: scjn`
+provenance header.
+
+The texts are editorial: the Official Gazette of the Federation (DOF) remains the official source
+of Mexican legal text. This repository and its releases hold SCJN data only: no link to the DOF
+note that published a snapshot (`codNota`), no DOF text and no DOF date. That DOF linking lives
 outside this repository.
 
 ## Documentation
@@ -52,10 +63,11 @@ where the index has none (an index older than the change has none; every publish
 classification wherever the SCJN gives it). They were filled into `estado.json` of the instruments
 already crawled by `scripts/backfill_scjn_classification.py`.
 
-    scjn download [--coleccion {leyes,reglamentos,lineamientos,tratados,estatutos}] [--slug SLUG | --id ID]
-                  [--cache-dir DIR] [--refrescar]
+    scjn --version
+    scjn download [--collection {laws,regulations,guidelines,treaties,bylaws}] [--slug SLUG | --id ID]
+                  [--all] [--cache-dir DIR] [--refresh]
 
-puts a release on disk (`leyes` by default; `--slug` narrows `leyes`, `--id` the others); every reader in `scjn.release` then reads off it
+puts a release on disk (`laws` by default; `--slug` narrows `laws`, `--id` the others; `--all` downloads the five collections); every reader in `scjn.release` then reads off it
 with no network request at all, raising `scjn.release.AssetNotCached` for
 whatever is not there yet. Resolving a release's parts asks the GitHub API,
 where an unauthenticated address gets 60 requests an hour; when `GH_TOKEN`
@@ -95,6 +107,13 @@ generated data, never by an import.
 
 Rule numbers below are those of the day each entry was written; `md2akn`'s `RULES.md` (issue #304) maps every old number to the present layered list (W, S, B, U).
 
+- **0.7.0** (breaking at the command line): `scjn download` is English. `--collection`
+  replaces `--coleccion` and takes `laws`, `regulations`, `guidelines`, `treaties` or `bylaws`
+  (for `scjn-leyes`, `scjn-reglamentos`, `scjn-lineamientos`, `scjn-tratados`,
+  `scjn-estatutos`); `--refresh` replaces `--refrescar`. The Spanish spellings are gone, with
+  no alias. New: `scjn --version`, and `scjn download --all`, which downloads every collection
+  (every entry of the new `scjn.cache.COLLECTION_CLI_NAMES`). `AssetNotCached` names the new
+  command. The Python API, the release tags and the cache layout are unchanged.
 - **Issue #6 (still 0.5.1):** the releases' default owner is `legistlan/scjn`
   (`scjn.release.DEFAULT_RELEASE_REPOSITORY`; `SCJN_RELEASE_REPOSITORY` still points a reader at a
   mirror) and the User-Agent product token of the three network paths is `legistlan-scjn`
@@ -262,7 +281,7 @@ unrelated. `scripts/tests` holds the two tests of the crawl scripts.
 | `test_markdown.py` | the plain-text-to-Markdown writer (`scjn.markdown`) |
 | `test_outline.py` | the outline markers the writer keeps |
 | `test_packaging.py` | `[tool.uv] cache-keys` lists `scjn/__init__.py`, where the dynamic version lives |
-| `test_release.py` | the release readers; the three id-keyed collections share one parametrised wrapper set (`TestIdKeyedWrappers`, over `COLECCIONES_POR_ID`) |
+| `test_release.py` | the release readers; the id-keyed collections share one parametrised wrapper set (`TestIdKeyedWrappers`, over `COLECCIONES_POR_ID`) |
 | `test_release_red.py` | end-to-end check against the real release (network) |
 | `test_site_references.py` | no reference to the retired WebForms site anywhere in the tree |
 | `test_state.py` | crawl state and the row-comparison plan |

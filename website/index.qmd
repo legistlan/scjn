@@ -6,31 +6,37 @@ number-sections: false
 ---
 
 ::: {.home-lead}
-**scjn** is the client for the Suprema Corte de Justicia de la Nación's SCOW
-JSON API (the backend of `legislacion.scjn.gob.mx/consulta`), the writer of
-the Markdown snapshots of an instrument's reforms, and the disk-first reader
-of the five SCJN releases: `scjn-leyes`, `scjn-reglamentos`,
-`scjn-lineamientos`, `scjn-tratados` and `scjn-estatutos`. Each snapshot carries a
-`fuente: scjn` provenance header.
+The Supreme Court of Justice of the Nation (SCJN) publishes Mexican legal
+instruments as complete texts that incorporate their reforms, and keeps, for
+every instrument, the text as it read after each reform. **scjn** reads that
+database through the SCJN's own JSON API (the backend of
+`legislacion.scjn.gob.mx/consulta`), writes each of those texts as a dated
+Markdown snapshot, and reads the five releases that publish them: federal
+laws (`scjn-leyes`), regulations (`scjn-reglamentos`), guidelines
+(`scjn-lineamientos`), international treaties (`scjn-tratados`) and bylaws
+(`scjn-estatutos`).
 :::
 
 ::: {.callout-warning}
 ## The SCJN is not an official source of legal text
 
-The *Diario Oficial de la Federación* (DOF) is. `fuente: scjn` in a
-provenance header means exactly that: the text is the SCJN's consolidated
-view, a convenience corpus and never a replacement for the gazette. This
-site and its releases hold SCJN data only: nothing links a snapshot to the DOF
-note that published it, and that linking lives outside this repository.
+The texts are editorial: the Official Gazette of the Federation (DOF) remains
+the official source of Mexican legal text. The DOF publishes a reform as a
+decree that states only the amendments, so it records how a text changes; the
+SCJN compiles the text that results. `fuente: scjn` in a snapshot's provenance
+header means exactly that. This site and its releases hold SCJN data only:
+nothing links a snapshot to the DOF note that published it, and that linking
+lives outside this repository.
 :::
 
 ::: {.fronts}
 ::: {.front}
-### Five releases
+### Five collections
 
-`scjn-leyes` (315 federal laws, reform-dated snapshots, keyed by `abrev`) and
-the id-keyed `scjn-reglamentos`, `scjn-lineamientos`, `scjn-tratados` and
-`scjn-estatutos` (keyed by `id_ordenamiento`); all five are published.
+Laws (`scjn-leyes`: 315 federal laws, one snapshot per reform, keyed by
+`abrev`) and four collections keyed by the SCJN's identifier
+(`id_ordenamiento`): regulations, guidelines, treaties and bylaws. All five
+releases are published; see [Releases](pages/releases.qmd).
 :::
 ::: {.front}
 ### Disk-first readers

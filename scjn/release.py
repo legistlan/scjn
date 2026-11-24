@@ -33,6 +33,7 @@ from scjn import cache
 from scjn.outline import strip_markers
 from scjn.cache import (
     _SCJN_LEYES_RELEASE,
+    COLLECTION_CLI_NAMES,
     ESTATUTOS,
     LINEAMIENTOS,
     REGLAMENTOS,
@@ -156,10 +157,11 @@ class AssetNotCached(Exception):
                 else "scjn download"
             )
         else:
+            cli = COLLECTION_CLI_NAMES.get(coleccion, coleccion)
             comando = (
-                f"scjn download --coleccion {coleccion} --id {nombre.removesuffix('.tgz')}"
+                f"scjn download --collection {cli} --id {nombre.removesuffix('.tgz')}"
                 if nombre.endswith(".tgz")
-                else f"scjn download --coleccion {coleccion}"
+                else f"scjn download --collection {cli}"
             )
         super().__init__(f"'{nombre}' is not cached under {cache_dir} -- run `{comando}`")
         self.nombre = nombre
@@ -940,7 +942,7 @@ def _index_de_release(coleccion: Coleccion, *, cache_dir=None) -> dict:
     read, memoized per `(coleccion, cache_dir)`.
 
     Raises `AssetNotCached` while the index is not cached yet — run `scjn
-    download --coleccion <nombre>` first.
+    download --collection <name>` first.
     """
     directorio = cache.resuelve_cache_dir(cache_dir)
     clave = (coleccion.nombre, str(directorio))
@@ -968,13 +970,13 @@ def _corpus_de_release(coleccion: Coleccion, id_ordenamiento: str | int, *, cach
     not an implementation detail):
 
     1. `AssetNotCached` if the collection's own index is not cached at all
-       yet — run `scjn download --coleccion <nombre>` first.
+       yet — run `scjn download --collection <name>` first.
     2. `SinTextoEnSCJN` if the index lists `id_ordenamiento` with no `asset`
        (decision 6: the SCJN classifies it but serves no text) — there is
        nothing to ever download for it.
     3. `AssetNotCached` if `id_ordenamiento` is absent from the index
        entirely, or its tarball is not on disk yet — run `scjn download
-       --coleccion <nombre> --id <id_ordenamiento>`.
+       --collection <name> --id <id_ordenamiento>`.
     """
     clave = str(id_ordenamiento)
     directorio = cache.resuelve_cache_dir(cache_dir)

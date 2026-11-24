@@ -37,7 +37,7 @@ message, a comment or a docstring is an issue of the monorepo, where those issue
   `scjn.outline` (the writer and its markers), `scjn.discovery` (the shared paging and rescue
   rules of the id-keyed collections), `scjn.catalog` (slugs, `abrev`, `instrumento_key`),
   `scjn.state` (per-instrument crawl state), `scjn.header` (the provenance header), `scjn.cache`,
-  `scjn.cli` (`scjn download`).
+  `scjn.cli` (`scjn download`, `scjn --version`).
 - **Entry points** for `scjn-leyes`: `download_scjn_leyes_index`/`_corpus`/`_catalog`,
   `markdown_de_snapshot`, `iter_current_federal_laws`, `local_slugs`,
   `download_scjn_leyes_assets`, `AssetNotCached`; the three id-keyed siblings have the same names
@@ -45,6 +45,12 @@ message, a comment or a docstring is an issue of the monorepo, where those issue
   `SinTextoEnSCJN` for an instrument with no text. Every reader reads only the cache and raises
   `AssetNotCached` rather than downloading; only `download_*_assets` and `scjn download` talk to
   the network.
+- **The command line is English, the Python API is not.** `scjn download --collection` takes
+  `laws`, `regulations`, `guidelines`, `treaties` or `bylaws`; `scjn.cache.COLLECTION_CLI_NAMES`
+  maps each internal name (`leyes`, `reglamentos`, `lineamientos`, `tratados`, `estatutos`) to
+  it and is the only place that translation lives. `--all` downloads every entry of that
+  mapping, so a new collection is one entry there. Release tags, cache directories and Python
+  names stay Spanish.
 - Only `leyes` has an `abrev` and an `actualizado`, the date of the newest reform the SCJN serves
   for the law, never a DOF date: the packager publishes `actualizado_scjn` (what the crawl records)
   or, when `estado.json` lacks it, the date of the law's newest snapshot
@@ -70,7 +76,10 @@ message, a comment or a docstring is an issue of the monorepo, where those issue
   crawled (match by `idOrdenamiento` only, never ranks, resumable through the
   `clasificacion_consultada` stamp it writes in `estado.json`, skips transport errors and exits 0); a human runs it, re-packages
   and publishes the index asset.
-- **No source other than the SCJN**: the Cámara de Diputados (LeyesBiblio) is not a source.
+- **No source other than the SCJN**: every text comes from the SCJN, and a new law is discovered
+  from the SCJN alone (`scripts/discover_federal_laws.py`). The original list of the 315 laws was
+  seeded from the catalogue of federal legislation the Cámara de Diputados publishes
+  (LeyesBiblio); that site is not a source of text and nothing in the tree reads it.
 
 ## The outline contract
 
@@ -180,6 +189,19 @@ no overlapping page:
   `website/pages/cli.qmd` naming every CLI option and every `scjn/*.py` module documented by
   exactly one `automodule` (`scjn.text` is the one named exception, until it has a section).
 
+Both halves and the README use one vocabulary: an *instrument* is any legal text; the five
+*collections* are laws, regulations, guidelines, treaties and bylaws, each named with its
+release tag on first mention; a *snapshot* is a dated version of an instrument; *current* is the
+latest text the SCJN serves, never "in force"; the texts are *editorial*, the DOF official.
+Three sentences are fixed word for word and `tests/test_docs.py` (`TestCanonicalSentences`)
+keeps them on the home page, the Releases page, the README and the developer reference: "The
+texts are editorial: the Official Gazette of the Federation (DOF) remains the official source of
+Mexican legal text.", "A snapshot is a dated version of an instrument: its text as it read after
+one reform." and "Current means the latest text the SCJN serves for an instrument at the time it
+was collected; it is not a determination that every provision is in force." The documentation
+stops at the Markdown snapshot and its markers: what other packages do with them is not
+described here.
+
 Nothing in the tree names the former organization or the monorepo this package was extracted from:
 provenance is said without naming ("the monorepo this package was extracted from"), links point at
 `legistlan`, and `tests/test_docs.py` (`TestNoFormerOwnerNames`) fails on either name, in any letter
@@ -191,8 +213,8 @@ case, in any tracked file. A `#N` issue reference stays: it names nothing.
 pip install -e ".[test]"
 pytest tests scripts/tests --ignore=tests/test_api_red.py --ignore=tests/test_release_red.py
 pytest tests/test_api_red.py tests/test_release_red.py                   # network: the SCOW API, the release
-scjn download --slug lfca --refrescar && scjn download --coleccion reglamentos --id 104906 \
-  && scjn download --coleccion estatutos --id 111330   # what the doctests read
+scjn download --slug lfca --refresh && scjn download --collection regulations --id 104906 \
+  && scjn download --collection bylaws --id 111330   # what the doctests read
 python -m sphinx -n -W --keep-going -b html docs/source docs/build/html   # the strict build
 quarto render website                                                     # the user site, into website/_site
 python -m sphinx -b doctest docs/source docs/build/doctest                # the examples, off the cache

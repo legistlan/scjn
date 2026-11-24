@@ -76,7 +76,10 @@ message, a comment or a docstring is an issue of the monorepo, where those issue
   crawled (match by `idOrdenamiento` only, never ranks, resumable through the
   `clasificacion_consultada` stamp it writes in `estado.json`, skips transport errors and exits 0); a human runs it, re-packages
   and publishes the index asset.
-- **No source other than the SCJN**: the Cámara de Diputados (LeyesBiblio) is not a source.
+- **No source other than the SCJN**: every text comes from the SCJN, and a new law is discovered
+  from the SCJN alone (`scripts/discover_federal_laws.py`). The original list of the 315 laws was
+  seeded from the catalogue of federal legislation the Cámara de Diputados publishes
+  (LeyesBiblio); that site is not a source of text and nothing in the tree reads it.
 
 ## The outline contract
 
@@ -185,6 +188,19 @@ no overlapping page:
   the developer reference holds the verified ones. `tests/test_docs.py` keeps
   `website/pages/cli.qmd` naming every CLI option and every `scjn/*.py` module documented by
   exactly one `automodule` (`scjn.text` is the one named exception, until it has a section).
+
+Both halves and the README use one vocabulary: an *instrument* is any legal text; the five
+*collections* are laws, regulations, guidelines, treaties and bylaws, each named with its
+release tag on first mention; a *snapshot* is a dated version of an instrument; *current* is the
+latest text the SCJN serves, never "in force"; the texts are *editorial*, the DOF official.
+Three sentences are fixed word for word and `tests/test_docs.py` (`TestCanonicalSentences`)
+keeps them on the home page, the Releases page, the README and the developer reference: "The
+texts are editorial: the Official Gazette of the Federation (DOF) remains the official source of
+Mexican legal text.", "A snapshot is a dated version of an instrument: its text as it read after
+one reform." and "Current means the latest text the SCJN serves for an instrument at the time it
+was collected; it is not a determination that every provision is in force." The documentation
+stops at the Markdown snapshot and its markers: what other packages do with them is not
+described here.
 
 Nothing in the tree names the former organization or the monorepo this package was extracted from:
 provenance is said without naming ("the monorepo this package was extracted from"), links point at

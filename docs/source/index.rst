@@ -20,19 +20,43 @@ documentation of its siblings is where each one has put it: ``document2md`` at
    This page is the developer reference. Using the package is documented on
    the user site, `legistlan.github.io/scjn <https://legistlan.github.io/scjn/>`_.
 
-:py:mod:`scjn` is the client for the Suprema Corte de Justicia de la
-Nación's SCOW JSON API (:py:mod:`scjn.api`, the backend of
+The Supreme Court of Justice of the Nation (SCJN) publishes Mexican legal
+instruments as complete texts that incorporate their reforms, and keeps, for
+every instrument, the text as it read after each reform. :py:mod:`scjn` is the
+client for the SCJN's SCOW JSON API (:py:mod:`scjn.api`, the backend of
 `legislacion.scjn.gob.mx/consulta/buscador
-<https://legislacion.scjn.gob.mx/consulta/buscador>`_) and the disk-first
-reader for the five GitHub releases it feeds (:py:mod:`scjn.release`) — a
-Mexican federal law's reform-dated snapshots, one tarball per law
-(``scjn-leyes``); since issue #220, every federal *reglamento* the SCJN has,
-one tarball per instrument (``scjn-reglamentos``); and, since issue #222,
-every federal *lineamiento* the SCJN has, on the same id-keyed shape
-(``scjn-lineamientos``); and, since issue #277, every international *treaty*
-the SCJN serves, on that same shape (``scjn-tratados``); and, since issue #9,
-every federal *estatuto* the SCJN classifies ``ESTATUTO``, on that same shape
-(``scjn-estatutos``, published on 2026-11-17). It was extracted out of ``nota2md``'s own
+<https://legislacion.scjn.gob.mx/consulta/buscador>`_), the writer of those
+texts as dated Markdown snapshots (:py:mod:`scjn.markdown`,
+:py:mod:`scjn.outline`) and the disk-first reader of the five GitHub releases
+that publish them (:py:mod:`scjn.release`), one collection per release:
+
+.. list-table::
+   :header-rows: 1
+
+   * - Collection
+     - Release
+     - Keyed by
+   * - laws
+     - ``scjn-leyes``
+     - ``abrev`` (the slug), one tarball per law
+   * - regulations
+     - ``scjn-reglamentos`` (issue #220)
+     - ``id_ordenamiento``
+   * - guidelines
+     - ``scjn-lineamientos`` (issue #222)
+     - ``id_ordenamiento``
+   * - treaties
+     - ``scjn-tratados`` (issue #277)
+     - ``id_ordenamiento``
+   * - bylaws
+     - ``scjn-estatutos`` (issue #9, published on 2026-11-17)
+     - ``id_ordenamiento``
+
+The first column is the name a collection has at the command line
+(:py:data:`~scjn.cache.COLLECTION_CLI_NAMES`); function names, release tags and
+cache directories keep the Spanish word.
+
+It was extracted out of ``nota2md``'s own
 modules (issue #206): Fase 1 (#207) moved the
 transport, the catalogue's own algebra (:py:mod:`scjn.catalog`),
 per-instrument crawl state (:py:mod:`scjn.state`) and the provenance header's
@@ -45,14 +69,25 @@ data only: the releases carry no link between a snapshot and the DOF note
 that published it (``codNota``), no DOF text and no DOF date — that DOF
 linking lives outside this repository.
 
-Two things worth stating explicitly before the API, because nothing in the
+Four things worth stating explicitly before the API, because nothing in the
 signatures below conveys them:
 
-- **What** ``fuente: scjn`` **means.** The SCJN is not an official source of
-  legal text — ``dof.gob.mx``/SIDOF remains that. Every
-  file this package's crawl writes, and every snapshot the ``scjn-leyes``
-  release ships, keeps that header intact, so whoever reads the result can
-  tell where it came from — unchanged by this epic.
+- **What** ``fuente: scjn`` **means.** The texts are editorial: the Official
+  Gazette of the Federation (DOF) remains the official source of Mexican legal
+  text. The DOF publishes a reform as a decree that states only the
+  amendments; the SCJN compiles the text that results. Every file this
+  package's crawl writes, and every snapshot a release ships, keeps that
+  header intact, so whoever reads the result can tell where it came from.
+- **What a snapshot is.** A snapshot is a dated version of an instrument: its
+  text as it read after one reform. Its provenance header always carries
+  ``fuente``, ``ordenamiento``, ``fecha_publicacion``, ``id_ordenamiento`` and
+  ``reforma_id``; ``nombre_buscado``, ``fecha_expedicion``, ``categoria``,
+  ``ratio_similitud``, ``sospechoso``, ``seccion_publicacion`` and ``materia``
+  appear when the crawl has them (:py:func:`scjn.api.cabecera`).
+- **What "current" means.** Current means the latest text the SCJN serves for
+  an instrument at the time it was collected; it is not a determination that
+  every provision is in force. The SCJN's own ``vigencia`` field is published
+  as the SCJN gives it and is a different thing.
 - **What "reform N" means.** It is the SCJN reform table's own chronological
   order — the snapshots of a law in the ``scjn-leyes`` release, one per
   reform, named by their ``fecha_publicacion``, oldest first. It is not an attempt to reproduce the Cámara de
@@ -64,7 +99,7 @@ The sections below are ordered the way a caller actually reaches this
 corpus: :py:mod:`scjn.release` (the entry points, disk-only), :py:mod:`scjn.api`
 (the transport underneath the corpus — the one documented exception to "every
 public symbol has a verified example" on this page), :py:mod:`scjn.discovery`
-(the shared discovery machinery behind the two id-keyed collections'
+(the shared discovery machinery behind the id-keyed collections'
 discovery scripts, issue #222's Fase 0), :py:mod:`scjn.catalog`
 (the federal-law catalogue's own algebra), :py:mod:`scjn.state` (per-instrument
 crawl state and completeness), :py:mod:`scjn.header` (reading a crawl's own
@@ -234,6 +269,9 @@ naming the exact ``scjn download`` command that populates it:
 ``scjn-reglamentos`` — the second collection (issue #220)
 ------------------------------------------------------------
 
+The regulations (``scjn download --collection regulations``): the federal
+instruments the SCJN classifies ``REGLAMENTO``.
+
 Every federal *reglamento* the SCJN has, published as a sibling release
 alongside ``scjn-leyes`` — same disk-first contract (every reader here is
 offline too, and :py:exc:`~scjn.release.AssetNotCached` names the right ``scjn
@@ -356,6 +394,11 @@ belongs, and :py:func:`~scjn.release.download_scjn_reglamentos_corpus` still rai
 ``scjn-lineamientos`` — the third collection (issue #222)
 ------------------------------------------------------------
 
+The guidelines (``scjn download --collection guidelines``): the federal
+instruments the SCJN classifies ``LINEAMIENTOS``, administrative instruments
+typically issued as *acuerdos*, whose provisions are numbered with ordinals
+rather than as articles.
+
 Every federal *lineamiento* the SCJN has — 163 instruments, 126 with text —
 published as a sibling release alongside ``scjn-leyes``/``scjn-reglamentos``,
 on the id-keyed collection path issue #222's Fase 0 refactored so a third
@@ -414,6 +457,9 @@ against a synthetic on-disk release.
 ``scjn-tratados`` — the fourth collection (issue #277)
 ------------------------------------------------------------
 
+The treaties (``scjn download --collection treaties``): every instrument the
+SCJN files under the scope ``TRATADOS INTERNACIONALES``, whatever its category.
+
 Every international treaty the SCJN serves — ~1,456 instruments — published
 as a sibling release on the same id-keyed path: a descriptor entry
 (:py:data:`~scjn.cache.TRATADOS`), four wrapper functions and a discovery
@@ -467,6 +513,10 @@ on-disk release rather than by a live walk.
 
 ``scjn-estatutos`` — the fifth collection (issue #9)
 ------------------------------------------------------------
+
+The bylaws (``scjn download --collection bylaws``): the federal instruments
+the SCJN classifies ``ESTATUTO``, the governing instruments of federal bodies,
+agencies and universities.
 
 Every federal instrument the SCJN classifies ``ESTATUTO`` (organic statutes of
 federal bodies, agencies and universities; 379 at the audit of 13 November 2026),
@@ -673,6 +723,18 @@ label, ``marker_line``/``parse_marker`` write and read the line, and
 
 ``scjn.discovery`` — shared id-keyed collection discovery (issue #222)
 ---------------------------------------------------------------------------
+
+The SCJN's search service cannot list what its database holds (an empty query
+answers nothing), so each collection is found in its own way, and an
+instrument is always resolved by the identifier the SCJN assigns to it
+(``id_ordenamiento``), never by its rank in the search results. The
+regulations, the guidelines and the bylaws are found through unions of phrase
+searches for the federal scope (*ámbito*) and the category of the collection,
+with every page of results read to its end; the treaties through the scope
+``TRATADOS INTERNACIONALES``, whatever their category. The original list of
+the 315 laws was seeded from the catalogue of federal legislation that the
+Chamber of Deputies publishes; every text comes from the SCJN, and a law added
+since is discovered from the SCJN alone (``scripts/discover_federal_laws.py``).
 
 The three passes behind ``discover_federal_reglamentos.py`` (issue #220) and
 ``discover_federal_lineamientos.py`` (issue #222), extracted into library

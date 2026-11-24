@@ -242,6 +242,25 @@ class TestCanonicalSentences(unittest.TestCase):
         self.assertIn(self.S2, text)
         self.assertIn(self.S3, text)
 
+    def test_the_developer_reference_has_the_three_sentences(self):
+        text = self._read("docs/source/index.rst")
+        for sentence in (self.S1, self.S2, self.S3):
+            with self.subTest(sentence=sentence[:30]):
+                self.assertIn(sentence, text)
+
+    def test_the_developer_reference_names_every_collection(self):
+        text = self._read("docs/source/index.rst")
+        for nombre, cli_name in COLLECTION_CLI_NAMES.items():
+            with self.subTest(collection=cli_name):
+                self.assertIn(f"``scjn-{nombre}``", text)
+                if nombre != "leyes":
+                    self.assertIn(f"scjn download --collection {cli_name}", text)
+
+    def test_convenience_corpus_is_gone_from_the_developer_reference_and_the_package(self):
+        for relative in ("docs/source/index.rst", "scjn/__init__.py"):
+            with self.subTest(file=relative):
+                self.assertNotIn("convenience corpus", self._read(relative).lower())
+
     def test_the_retired_phrases_are_gone(self):
         files = [ROOT / "README.md", *sorted((ROOT / "website").rglob("*.qmd"))]
         for path in files:

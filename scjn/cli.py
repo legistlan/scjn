@@ -1,8 +1,10 @@
 """`scjn`'s command line: the one verb this package needs, putting a release
 on disk.
 
-    scjn download [--coleccion {leyes,reglamentos,lineamientos,tratados,estatutos}]
-                  [--slug SLUG | --id ID] [--cache-dir DIR] [--refrescar]
+    scjn --version
+
+    scjn download [--collection {laws,regulations,guidelines,treaties,bylaws}]
+                  [--slug SLUG | --id ID] [--all] [--cache-dir DIR] [--refresh]
 
 A downstream package's own `download` subcommands delegate to this same
 downloader (`scjn.release.download_scjn_leyes_assets`/
@@ -10,7 +12,7 @@ downloader (`scjn.release.download_scjn_leyes_assets`/
 `download_scjn_tratados_assets`/`download_scjn_estatutos_assets`)
 rather than reimplementing it.
 
-`--coleccion` (issue #220, #222, #277, #9) is dispatched through
+`--collection` (issue #220, #222, #277, #9; its values are the English names of `scjn.cache.COLLECTION_CLI_NAMES`) is dispatched through
 `scjn.cache.COLECCIONES_POR_ID` for the id-keyed collections
 (`reglamentos`, `lineamientos`, `tratados`, `estatutos`) -- all share the exact same download path
 (issue #222's Fase 0), so adding one more id-keyed collection here means one
@@ -20,7 +22,8 @@ all."""
 
 import argparse
 
-from scjn.cache import CACHE_DIR, _SCJN_LEYES_RELEASE, COLECCIONES_POR_ID
+from scjn import __version__
+from scjn.cache import CACHE_DIR, _SCJN_LEYES_RELEASE, COLECCIONES_POR_ID, COLLECTION_CLI_NAMES
 from scjn.release import (
     _ULTIMO_NUMERO_DE_PARTES,
     download_scjn_estatutos_assets,
@@ -48,6 +51,7 @@ def build_parser():
         "-- the index plus one tarball per instrument -- into this package's own "
         "per-user cache directory, so every reader in scjn.release finds it already there.",
     )
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     sub = parser.add_subparsers(dest="comando", required=True)
 
     descarga = sub.add_parser(
@@ -56,21 +60,29 @@ def build_parser():
         description="Download the scjn-leyes (default), scjn-reglamentos, "
         "scjn-lineamientos, scjn-tratados or scjn-estatutos release's assets. Already-cached assets are matched by name "
         "and never revalidated, so a second run costs no download at all -- pass "
-        "--refrescar to force one.",
+        "--refresh to force one.",
     )
     descarga.add_argument(
-        "--coleccion", choices=("leyes", *COLECCIONES_POR_ID), default="leyes",
-        help="Which release to download (default: %(default)s).",
+        "--collection", choices=tuple(COLLECTION_CLI_NAMES.values()), default=None,
+        help="Which collection to download (default: laws). laws: scjn-leyes, the federal "
+        "laws; regulations: scjn-reglamentos; guidelines: scjn-lineamientos; treaties: "
+        "scjn-tratados, the international treaties; bylaws: scjn-estatutos, the federal "
+        "instruments the SCJN classifies ESTATUTO.",
+    )
+    descarga.add_argument(
+        "--all", action="store_true",
+        help="Download every collection, whole. Cannot be combined with --collection, "
+        "--slug or --id.",
     )
     descarga.add_argument(
         "--slug", action="append", default=None, metavar="SLUG", dest="slugs",
-        help="Only this law's tarball, by slug (repeatable, --coleccion leyes only). "
+        help="Only this law's tarball, by slug (repeatable, --collection laws only). "
         "Not given: every law the release publishes. The index is always downloaded.",
     )
     descarga.add_argument(
         "--id", action="append", default=None, metavar="ID", dest="ids",
         help="Only this instrument's tarball, by id_ordenamiento (repeatable, "
-        "--coleccion reglamentos/lineamientos/tratados/estatutos only). Not given: every instrument the "
+        "--collection regulations/guidelines/treaties/bylaws only). Not given: every instrument the "
         "release publishes. The index is always downloaded.",
     )
     descarga.add_argument(
@@ -79,42 +91,50 @@ def build_parser():
         "OS-appropriate per-user cache, overridable with $SCJN_CACHE_DIR).",
     )
     descarga.add_argument(
-        "--refrescar", action="store_true",
+        "--refresh", action="store_true",
         help="Re-download assets already present instead of keeping them",
     )
     return parser
 
 
-def _main_download(args, log=print):
-    if args.ids and args.coleccion not in COLECCIONES_POR_ID:
-        raise SystemExit(
-            f"--id solo aplica con --coleccion {'/'.join(COLECCIONES_POR_ID)}"
-        )
-    if args.slugs and args.coleccion != "leyes":
-        raise SystemExit("--slug solo aplica con --coleccion leyes (default)")
-
-    cache_dir = args.cache_dir if args.cache_dir is not None else CACHE_DIR
-    if args.coleccion in COLECCIONES_POR_ID:
-        resultados = _DESCARGAS_POR_ID[args.coleccion](
-            args.ids, cache_dir=cache_dir, refrescar=args.refrescar, log=log,
-        )
-    else:
+def _download_collection(nombre, keys, cache_dir, refresh, log):
+    """Download one collection (`nombre` is its internal name) and log its summary line."""
+    if nombre == "leyes":
         resultados = download_scjn_leyes_assets(
-            args.slugs, cache_dir=cache_dir, refrescar=args.refrescar, log=log,
+            keys, cache_dir=cache_dir, refrescar=refresh, log=log,
         )
+        base = _SCJN_LEYES_RELEASE
+    else:
+        resultados = _DESCARGAS_POR_ID[nombre](
+            keys, cache_dir=cache_dir, refrescar=refresh, log=log,
+        )
+        base = COLECCIONES_POR_ID[nombre].tag_base
     nuevos = sum(1 for _, descargado in resultados if descargado)
     destino = resultados[0][0].parent
-    base = (
-        COLECCIONES_POR_ID[args.coleccion].tag_base
-        if args.coleccion in COLECCIONES_POR_ID
-        else _SCJN_LEYES_RELEASE
-    )
     partes = _ULTIMO_NUMERO_DE_PARTES.get(base)
-    sufijo_partes = f" ({partes} partes)" if partes and partes > 1 else ""
+    sufijo_partes = f" ({partes} parts)" if partes and partes > 1 else ""
     log(
-        f"scjn-{args.coleccion}: {len(resultados)} assets in {destino} "
+        f"scjn-{nombre}: {len(resultados)} assets in {destino} "
         f"({nuevos} downloaded, {len(resultados) - nuevos} already cached){sufijo_partes}"
     )
+
+
+def _main_download(args, log=print):
+    if args.all and (args.collection or args.slugs or args.ids):
+        raise SystemExit("--all cannot be combined with --collection, --slug or --id")
+    cache_dir = args.cache_dir if args.cache_dir is not None else CACHE_DIR
+    if args.all:
+        for nombre in COLLECTION_CLI_NAMES:
+            _download_collection(nombre, None, cache_dir, args.refresh, log)
+        return
+    interno = {cli: nombre for nombre, cli in COLLECTION_CLI_NAMES.items()}
+    nombre = interno[args.collection or "laws"]
+    if args.ids and nombre == "leyes":
+        id_keyed = "/".join(c for n, c in COLLECTION_CLI_NAMES.items() if n != "leyes")
+        raise SystemExit(f"--id only applies with --collection {id_keyed}")
+    if args.slugs and nombre != "leyes":
+        raise SystemExit("--slug only applies with --collection laws (the default)")
+    _download_collection(nombre, args.slugs if nombre == "leyes" else args.ids, cache_dir, args.refresh, log)
 
 
 def main(argv=None):

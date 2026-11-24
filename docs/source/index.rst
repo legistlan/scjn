@@ -237,7 +237,7 @@ naming the exact ``scjn download`` command that populates it:
 Every federal *reglamento* the SCJN has, published as a sibling release
 alongside ``scjn-leyes`` — same disk-first contract (every reader here is
 offline too, and :py:exc:`~scjn.release.AssetNotCached` names the right ``scjn
-download --coleccion reglamentos`` command), but a narrower corpus: no
+download --collection regulations`` command), but a narrower corpus: no
 ``abrev`` (the SCJN reissues a reglamento as a brand-new ``idOrdenamiento``
 rather than as a reform of the previous one, so a title-derived key would
 collide — 137 of 1080 titles repeat). A tarball holds the snapshots and
@@ -291,7 +291,7 @@ below resolves the whole series transparently — a caller never names a part.
 
 :py:func:`~scjn.release.download_scjn_reglamentos_assets` is the one function below
 that talks to the network — every reader after it assumes it (or the ``scjn
-download --coleccion reglamentos`` CLI built on it) already ran:
+download --collection regulations`` CLI built on it) already ran:
 
 >>> resultados = release.download_scjn_reglamentos_assets(["104906"])
 >>> sorted(ruta.name for ruta, _ in resultados)
@@ -483,7 +483,7 @@ refuses (``178398`` has none, ``111330`` has 4 of its 5 reforms).
 The examples below read ``111330`` (the *Estatuto del Servicio Profesional
 Electoral Nacional y del Personal de la Rama Administrativa*), a small
 instrument with text, which the doctest job puts in the cache the way it does
-``lfca`` and ``104906`` (``scjn download --coleccion estatutos --id 111330``).
+``lfca`` and ``104906`` (``scjn download --collection bylaws --id 111330``).
 
 :py:func:`~scjn.release.construye_indice_global_estatutos` needs no cache, so it
 has a live example; its entries carry the classification fields
@@ -505,7 +505,7 @@ False
 
 :py:func:`~scjn.release.download_scjn_estatutos_assets` is the only one of these
 readers that talks to the network (and, through it, ``scjn download
---coleccion estatutos``); it resolves the release's series and puts the index
+--collection bylaws``); it resolves the release's series and puts the index
 and the instrument's tarball in the cache:
 
 >>> resultados = release.download_scjn_estatutos_assets(["111330"])
@@ -904,7 +904,7 @@ moving release assets over with ``os.replace`` rather than downloading
 :py:class:`~scjn.cache.Coleccion` (issue #222's Fase 0) describes an
 id-keyed collection's own release-tag series and cache subdirectory;
 :py:data:`~scjn.cache.COLECCIONES_POR_ID` maps a collection's name to its
-descriptor, for :py:mod:`scjn.cli` and the scripts to dispatch ``--coleccion``
+descriptor, for :py:mod:`scjn.cli` (``--collection``) and the scripts (``--coleccion``) to dispatch
 through instead of a per-collection literal branch:
 
 >>> sorted(cache.COLECCIONES_POR_ID)
@@ -918,6 +918,13 @@ through instead of a per-collection literal branch:
 'scjn-reglamentos'
 >>> cache.TRATADOS.tag_base
 'scjn-tratados'
+
+:py:data:`~scjn.cache.COLLECTION_CLI_NAMES` maps every collection's internal
+name to the English name it has at the command line; ``scjn download --all``
+downloads every entry of it:
+
+>>> cache.COLLECTION_CLI_NAMES
+{'leyes': 'laws', 'reglamentos': 'regulations', 'lineamientos': 'guidelines', 'tratados': 'treaties', 'estatutos': 'bylaws'}
 
 .. automodule:: scjn.cache
    :members:
@@ -938,35 +945,51 @@ reimplementing it:
    [2/2] lfca.tgz: already cached
    scjn-leyes: 2 assets in /home/user/.cache/scjn/scjn-leyes (0 downloaded, 2 already cached)
 
-``--coleccion {leyes,reglamentos,lineamientos,tratados,estatutos}`` (default ``leyes``;
-issue #220 added ``reglamentos``, issue #222 added ``lineamientos``, issue
-#277 added ``tratados``, issue #9 added ``estatutos``) picks which release; ``--id`` replaces ``--slug``
-for any id-keyed collection, since all are keyed by ``id_ordenamiento`` rather than by a slug:
+``--collection {laws,regulations,guidelines,treaties,bylaws}`` (default ``laws``)
+picks which release: ``scjn-leyes``, ``scjn-reglamentos``, ``scjn-lineamientos``,
+``scjn-tratados`` or ``scjn-estatutos``. The values are the English names of
+:py:data:`~scjn.cache.COLLECTION_CLI_NAMES`; the Spanish names are those of the
+releases and of the Python API. ``--id`` replaces ``--slug`` for any id-keyed
+collection, since all are keyed by ``id_ordenamiento`` rather than by a slug:
 
 .. code-block:: console
 
-   $ scjn download --coleccion reglamentos --id 104906
+   $ scjn download --collection regulations --id 104906
    [1/2] indice-global.json.gz: downloaded
    [2/2] 104906.tgz: downloaded
-   scjn-reglamentos: 2 assets in /home/user/.cache/scjn/scjn-reglamentos (2 downloaded, 0 already cached) (2 partes)
+   scjn-reglamentos: 2 assets in /home/user/.cache/scjn/scjn-reglamentos (2 downloaded, 0 already cached) (2 parts)
 
-   $ scjn download --coleccion estatutos --id 111330
+   $ scjn download --collection bylaws --id 111330
    [1/2] indice-global.json.gz: downloaded
    [2/2] 111330.tgz: downloaded
    scjn-estatutos: 2 assets in /home/user/.cache/scjn/scjn-estatutos (2 downloaded, 0 already cached)
 
-Since issue #222's Fase 0, this is dispatched through
-:py:data:`~scjn.cache.COLECCIONES_POR_ID` rather than a hand-written
-per-flag branch for each id-keyed collection: adding a further one costs a
-new dict entry, not a new literal branch. ``leyes`` itself stays its own
-separate branch — it takes ``--slug``, not ``--id``, and has no
-:py:class:`~scjn.cache.Coleccion` descriptor at all.
+The id-keyed collections are dispatched through
+:py:data:`~scjn.cache.COLECCIONES_POR_ID` rather than a hand-written branch
+for each one: adding a further one costs a new dict entry, not a new literal
+branch. ``laws`` stays its own separate branch: it takes ``--slug``, not
+``--id``, and has no :py:class:`~scjn.cache.Coleccion` descriptor at all.
 
-``(2 partes)`` (issue #223) appears whenever a download session actually
+``(2 parts)`` (issue #223) appears whenever a download session actually
 asked GitHub for this collection's series of release tags and found more
-than one — this collection is ``scjn-reglamentos``/``scjn-reglamentos-2``
+than one; this collection is ``scjn-reglamentos``/``scjn-reglamentos-2``
 today. A run that finds everything already cached never asks, so it never
 prints a part count at all, same as the ``scjn-leyes`` example above.
+
+``--all`` downloads every collection, whole, one summary line per collection,
+and cannot be combined with ``--collection``, ``--slug`` or ``--id``. It is
+not run here: it fetches several thousand tarballs.
+
+.. code-block:: console
+
+   $ scjn download --all
+
+``--version`` prints the installed version:
+
+.. code-block:: console
+
+   $ scjn --version
+   scjn 0.7.0
 
 .. automodule:: scjn.cli
    :members:

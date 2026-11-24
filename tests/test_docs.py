@@ -12,6 +12,7 @@ import unittest
 from pathlib import Path
 
 from scjn import cli
+from scjn.cache import COLLECTION_CLI_NAMES
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -139,6 +140,71 @@ class TestNoFormerOwnerNames(unittest.TestCase):
             "tracked files name the former organization or monorepo: "
             + "; ".join(f"{n}: {', '.join(w)}" for n, w in sorted(offenders.items())),
         )
+
+
+class TestCliSpelling(unittest.TestCase):
+    """`scjn download` is English at the command line (issue #11).
+
+    The Spanish spelling (`--coleccion`, `--refrescar`) belongs to the crawl
+    scripts under `scripts/`, never to `scjn download`; the README Changelog
+    keeps it in the entries that say what was true then.
+    """
+
+    SPANISH = re.compile(r"scjn download[^\n]*--(coleccion|refrescar)")
+    SKIPPED = {"tests/test_docs.py", "tests/test_cli.py"}
+    SUFFIXES = (".md", ".qmd", ".rst", ".yml", ".py")
+
+    @staticmethod
+    def _changelog_lines(text):
+        """The 1-based numbers of the README lines inside the Changelog section."""
+        inside, numbers = False, set()
+        for number, line in enumerate(text.splitlines(), start=1):
+            if line.startswith("## "):
+                inside = line.strip() == "## Changelog"
+            if inside:
+                numbers.add(number)
+        return numbers
+
+    def test_no_document_shows_the_spanish_cli_spelling(self):
+        try:
+            listing = subprocess.run(
+                ["git", "ls-files", "-z"],
+                cwd=ROOT, capture_output=True, check=True,
+            ).stdout
+        except (OSError, subprocess.CalledProcessError):
+            self.skipTest("git is not available or ROOT is not a git checkout")
+
+        offenders = []
+        for name in filter(None, listing.decode("utf-8").split("\0")):
+            if (
+                not name.endswith(self.SUFFIXES)
+                or name.startswith("scripts/")
+                or name in self.SKIPPED
+            ):
+                continue
+            path = ROOT / name
+            if not path.is_file():
+                continue
+            try:
+                text = path.read_text(encoding="utf-8")
+            except (UnicodeDecodeError, OSError):
+                continue
+            exempt = self._changelog_lines(text) if name == "README.md" else set()
+            for number, line in enumerate(text.splitlines(), start=1):
+                if number not in exempt and self.SPANISH.search(line):
+                    offenders.append(f"{name}:{number}")
+
+        self.assertFalse(
+            offenders,
+            "these lines show `scjn download` with a Spanish option: " + ", ".join(offenders),
+        )
+
+    def test_the_cli_page_maps_every_collection_value_to_its_release(self):
+        page = (ROOT / "website" / "pages" / "cli.qmd").read_text(encoding="utf-8")
+        for nombre, cli_name in COLLECTION_CLI_NAMES.items():
+            with self.subTest(collection=cli_name):
+                self.assertIn(f"`{cli_name}`", page)
+                self.assertIn(f"`scjn-{nombre}`", page)
 
 
 if __name__ == "__main__":

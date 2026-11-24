@@ -7,27 +7,43 @@ cache directory, so that every reader in `scjn.release` then reads off it with
 no network request at all.
 
 ```bash
-scjn download [--coleccion {leyes,reglamentos,lineamientos,tratados,estatutos}]
-              [--slug SLUG | --id ID] [--cache-dir DIR] [--refrescar]
+scjn --version
+scjn download [--collection {laws,regulations,guidelines,treaties,bylaws}]
+              [--slug SLUG | --id ID] [--all] [--cache-dir DIR] [--refresh]
 ```
 
 The index is always downloaded. Assets already cached are matched by name and
 never revalidated, so a second run costs no download at all.
 
-## `--coleccion`
+## `--version`
 
-Which release to download: `leyes` (the default), `reglamentos`,
-`lineamientos`, `tratados` or `estatutos`.
+Prints the installed version and exits.
+
+```bash
+scjn --version
+```
+
+## `--collection`
+
+Which collection to download. The values are English; each one names a release:
+
+| `--collection` | Release | What it holds |
+|---|---|---|
+| `laws` (the default) | `scjn-leyes` | the federal laws |
+| `regulations` | `scjn-reglamentos` | the federal regulations (*reglamentos*) |
+| `guidelines` | `scjn-lineamientos` | the federal guidelines (*lineamientos*) |
+| `treaties` | `scjn-tratados` | the international treaties |
+| `bylaws` | `scjn-estatutos` | the federal instruments the SCJN classifies `ESTATUTO` |
 
 ```bash
 scjn download
-scjn download --coleccion tratados
+scjn download --collection treaties
 ```
 
 ## `--slug`
 
-Only this law's tarball, by slug. Repeatable, and valid with `--coleccion
-leyes` only. Not given: every law the release publishes.
+Only this law's tarball, by slug. Repeatable, and valid with `--collection
+laws` only. Not given: every law the release publishes.
 
 ```bash
 scjn download --slug lfca --slug cpeum
@@ -36,11 +52,21 @@ scjn download --slug lfca --slug cpeum
 ## `--id`
 
 Only this instrument's tarball, by `id_ordenamiento`. Repeatable, and valid
-with `--coleccion reglamentos`, `lineamientos`, `tratados` or `estatutos` only. Not given:
-every instrument the release publishes.
+with `--collection regulations`, `guidelines`, `treaties` or `bylaws` only. Not
+given: every instrument the release publishes.
 
 ```bash
-scjn download --coleccion reglamentos --id 104906
+scjn download --collection regulations --id 104906
+```
+
+## `--all`
+
+Every collection, whole: the five releases, several thousand tarballs. It
+cannot be combined with `--collection`, `--slug` or `--id`. A collection added
+to the package later is downloaded too.
+
+```bash
+scjn download --all
 ```
 
 ## `--cache-dir`
@@ -52,22 +78,23 @@ OS-appropriate per-user cache, overridable with `$SCJN_CACHE_DIR`.
 scjn download --slug lfca --cache-dir ./cache
 ```
 
-## `--refrescar`
+## `--refresh`
 
 Re-download assets already present instead of keeping them.
 
 ```bash
-scjn download --slug lfca --refrescar
+scjn download --slug lfca --refresh
 ```
 
 ## What the developer docs' examples read
 
 The verified examples of the [developer docs](https://legistlan.github.io/scjn/dev/)
-run against two cached assets, put there by:
+run against three cached assets, put there by:
 
 ```bash
 scjn download --slug lfca
-scjn download --coleccion reglamentos --id 104906
+scjn download --collection regulations --id 104906
+scjn download --collection bylaws --id 111330
 ```
 
 The last line of a run says what happened, for example

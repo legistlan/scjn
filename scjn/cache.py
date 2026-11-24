@@ -79,7 +79,7 @@ class Coleccion:
 
     `nombre` is the collection's own name (`"reglamentos"`, `"lineamientos"`,
     `"tratados"`, `"estatutos"`)
-    -- what a caller passes to `scjn download --coleccion` and what a
+    -- the internal name `scjn.cache.COLLECTION_CLI_NAMES` maps to what a caller passes to `scjn download --collection`, and what a
     published index's own `coleccion` field carries. `tag_base` is part 1 of
     its release-tag series (issue #223: `_tag_de_parte`/`_assets_de_partes`
     derive every later part from it, `-2`, `-3`, ...). `subdirectorio` is
@@ -129,7 +129,7 @@ ESTATUTOS = Coleccion(
 
 #: Every id-keyed collection, by its own `nombre` -- read by `scjn.cli`/
 #: `scripts/fetch_scjn_legislacion.py`/`scripts/empaqueta_scjn_coleccion.py`
-#: to dispatch `--coleccion` to the right `Coleccion` without a third
+#: to dispatch `--collection` (the scripts: `--coleccion`) to the right `Coleccion` without a third
 #: literal branch per new collection. Not a growing per-collection registry
 #: in the #189 sense: every value here is described identically by
 #: `Coleccion`, with no behaviour keyed off which one it is.
@@ -138,6 +138,20 @@ COLECCIONES_POR_ID: dict[str, Coleccion] = {
     LINEAMIENTOS.nombre: LINEAMIENTOS,
     TRATADOS.nombre: TRATADOS,
     ESTATUTOS.nombre: ESTATUTOS,
+}
+
+#: The name each collection has at the command line (`scjn download
+#: --collection <name>`), keyed by the collection's internal name: `"leyes"`
+#: plus every key of `COLECCIONES_POR_ID`. English at the command line,
+#: Spanish in the Python API, the release tags and on disk. The order is the
+#: order `scjn download --all` downloads in and `--help` lists. A new
+#: collection adds one entry here (`tests/test_cli.py` fails if it does not).
+COLLECTION_CLI_NAMES: dict[str, str] = {
+    "leyes": "laws",
+    REGLAMENTOS.nombre: "regulations",
+    LINEAMIENTOS.nombre: "guidelines",
+    TRATADOS.nombre: "treaties",
+    ESTATUTOS.nombre: "bylaws",
 }
 
 #: Asset names `migrate_legacy_assets` moves verbatim -- everything except a

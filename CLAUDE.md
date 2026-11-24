@@ -37,7 +37,7 @@ message, a comment or a docstring is an issue of the monorepo, where those issue
   `scjn.outline` (the writer and its markers), `scjn.discovery` (the shared paging and rescue
   rules of the id-keyed collections), `scjn.catalog` (slugs, `abrev`, `instrumento_key`),
   `scjn.state` (per-instrument crawl state), `scjn.header` (the provenance header), `scjn.cache`,
-  `scjn.cli` (`scjn download`).
+  `scjn.cli` (`scjn download`, `scjn --version`).
 - **Entry points** for `scjn-leyes`: `download_scjn_leyes_index`/`_corpus`/`_catalog`,
   `markdown_de_snapshot`, `iter_current_federal_laws`, `local_slugs`,
   `download_scjn_leyes_assets`, `AssetNotCached`; the three id-keyed siblings have the same names
@@ -45,6 +45,12 @@ message, a comment or a docstring is an issue of the monorepo, where those issue
   `SinTextoEnSCJN` for an instrument with no text. Every reader reads only the cache and raises
   `AssetNotCached` rather than downloading; only `download_*_assets` and `scjn download` talk to
   the network.
+- **The command line is English, the Python API is not.** `scjn download --collection` takes
+  `laws`, `regulations`, `guidelines`, `treaties` or `bylaws`; `scjn.cache.COLLECTION_CLI_NAMES`
+  maps each internal name (`leyes`, `reglamentos`, `lineamientos`, `tratados`, `estatutos`) to
+  it and is the only place that translation lives. `--all` downloads every entry of that
+  mapping, so a new collection is one entry there. Release tags, cache directories and Python
+  names stay Spanish.
 - Only `leyes` has an `abrev` and an `actualizado`, the date of the newest reform the SCJN serves
   for the law, never a DOF date: the packager publishes `actualizado_scjn` (what the crawl records)
   or, when `estado.json` lacks it, the date of the law's newest snapshot
@@ -191,8 +197,8 @@ case, in any tracked file. A `#N` issue reference stays: it names nothing.
 pip install -e ".[test]"
 pytest tests scripts/tests --ignore=tests/test_api_red.py --ignore=tests/test_release_red.py
 pytest tests/test_api_red.py tests/test_release_red.py                   # network: the SCOW API, the release
-scjn download --slug lfca --refrescar && scjn download --coleccion reglamentos --id 104906 \
-  && scjn download --coleccion estatutos --id 111330   # what the doctests read
+scjn download --slug lfca --refresh && scjn download --collection regulations --id 104906 \
+  && scjn download --collection bylaws --id 111330   # what the doctests read
 python -m sphinx -n -W --keep-going -b html docs/source docs/build/html   # the strict build
 quarto render website                                                     # the user site, into website/_site
 python -m sphinx -b doctest docs/source docs/build/doctest                # the examples, off the cache

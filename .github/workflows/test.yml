@@ -77,7 +77,7 @@ jobs:
       - name: Download the scjn-leyes assets the docs exercise
         run: scjn download --slug lfca
       - name: Download the scjn-reglamentos asset the docs exercise
-        run: scjn download --coleccion reglamentos --id 104906
+        run: scjn download --collection regulations --id 104906
       - name: Build the docs strictly
         run: python -m sphinx -n -W --keep-going -b html docs/source docs/build/html
       - name: Run the documentation's doctest examples

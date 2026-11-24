@@ -52,10 +52,11 @@ where the index has none (an index older than the change has none; every publish
 classification wherever the SCJN gives it). They were filled into `estado.json` of the instruments
 already crawled by `scripts/backfill_scjn_classification.py`.
 
-    scjn download [--coleccion {leyes,reglamentos,lineamientos,tratados,estatutos}] [--slug SLUG | --id ID]
-                  [--cache-dir DIR] [--refrescar]
+    scjn --version
+    scjn download [--collection {laws,regulations,guidelines,treaties,bylaws}] [--slug SLUG | --id ID]
+                  [--all] [--cache-dir DIR] [--refresh]
 
-puts a release on disk (`leyes` by default; `--slug` narrows `leyes`, `--id` the others); every reader in `scjn.release` then reads off it
+puts a release on disk (`laws` by default; `--slug` narrows `laws`, `--id` the others; `--all` downloads the five collections); every reader in `scjn.release` then reads off it
 with no network request at all, raising `scjn.release.AssetNotCached` for
 whatever is not there yet. Resolving a release's parts asks the GitHub API,
 where an unauthenticated address gets 60 requests an hour; when `GH_TOKEN`
@@ -95,6 +96,13 @@ generated data, never by an import.
 
 Rule numbers below are those of the day each entry was written; `md2akn`'s `RULES.md` (issue #304) maps every old number to the present layered list (W, S, B, U).
 
+- **0.7.0** (breaking at the command line): `scjn download` is English. `--collection`
+  replaces `--coleccion` and takes `laws`, `regulations`, `guidelines`, `treaties` or `bylaws`
+  (for `scjn-leyes`, `scjn-reglamentos`, `scjn-lineamientos`, `scjn-tratados`,
+  `scjn-estatutos`); `--refresh` replaces `--refrescar`. The Spanish spellings are gone, with
+  no alias. New: `scjn --version`, and `scjn download --all`, which downloads every collection
+  (every entry of the new `scjn.cache.COLLECTION_CLI_NAMES`). `AssetNotCached` names the new
+  command. The Python API, the release tags and the cache layout are unchanged.
 - **Issue #6 (still 0.5.1):** the releases' default owner is `legistlan/scjn`
   (`scjn.release.DEFAULT_RELEASE_REPOSITORY`; `SCJN_RELEASE_REPOSITORY` still points a reader at a
   mirror) and the User-Agent product token of the three network paths is `legistlan-scjn`

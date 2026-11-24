@@ -11,7 +11,7 @@ Every reader reads only the cache and raises `AssetNotCached` rather than
 downloading; only `download_*_assets` and `scjn download` (see
 [Command line](cli.qmd)) talk to the network.
 
-## `scjn-leyes`
+## Laws (`scjn-leyes`)
 
 ```python
 import scjn
@@ -40,11 +40,9 @@ for law in scjn.iter_current_federal_laws(["lfca"]):
   open at a time.
 - `AssetNotCached` is raised for whatever is not on disk yet.
 
-## The id-keyed releases
+## Regulations, guidelines, treaties and bylaws
 
-`scjn-reglamentos`, `scjn-lineamientos`, `scjn-tratados` and `scjn-estatutos` have the same
-functions with `reglamentos`, `lineamientos`, `tratados` or `estatutos` in the name, keyed by
-`id_ordenamiento` rather than by slug:
+The other four collections (`scjn-reglamentos`, `scjn-lineamientos`, `scjn-tratados` and `scjn-estatutos`) have the same functions with `reglamentos`, `lineamientos`, `tratados` or `estatutos` in the name, keyed by `id_ordenamiento` rather than by slug. The function names keep the Spanish word of the release; only the command line is English:
 
 ```python
 scjn.download_scjn_reglamentos_assets(["104906"])
@@ -59,10 +57,9 @@ for reglamento in scjn.iter_current_reglamentos():
 `download_scjn_lineamientos_*`, `download_scjn_tratados_*`,
 `download_scjn_estatutos_*`, `local_lineamientos_ids`, `local_tratados_ids`,
 `local_estatutos_ids`, `iter_current_lineamientos`, `iter_current_tratados` and
-`iter_current_estatutos` follow the same pattern. An instrument with no
-consolidated text raises `SinTextoEnSCJN`.
+`iter_current_estatutos` follow the same pattern. An instrument for which the SCJN serves no text raises `SinTextoEnSCJN`.
 
-## What only `leyes` has
+## What only the laws have
 
 Only `scjn-leyes` has an `abrev` (the release's slug and asset name, never
 re-derived) and an `actualizado` (the date of the newest reform the SCJN serves

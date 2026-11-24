@@ -11,6 +11,7 @@ human runs the publish step.
    `discover_federal_estatutos.py` list
    candidates and stop: no state is written, because a new law is a human's
    decision. `scjn.discovery` holds the shared paging and rescue rules.
+   [Releases](releases.qmd) says how each collection is found.
 2. **Seed.** `seed_federal_reglamentos.py --coleccion {reglamentos,lineamientos,tratados,estatutos}`
    turns a reviewed list into `estado.json` files, idempotently.
 3. **Crawl.** `fetch_scjn_legislacion.py` crawls (`--coleccion`, `--plan`, and for
@@ -50,8 +51,8 @@ python scripts/empaqueta_scjn_coleccion.py --coleccion reglamentos
 gh release upload scjn-leyes indice-global.json.gz --repo legistlan/scjn --clobber
 ```
 
-`scjn-estatutos` (the federal instruments the SCJN classifies `ESTATUTO`, 379 at the
-audit of 13 November 2026) is crawled the same way as the other id-keyed collections, and was published on
+The bylaws (`scjn-estatutos`, the federal instruments the SCJN classifies `ESTATUTO`, 379 at the
+audit of 13 November 2026) are crawled the same way as the other id-keyed collections, and were published on
 2026-11-17 (379 instruments, 377 with text); publishing remains a human's step.
 
 No script imports `dofjson` or `nota2md` (see [Install](install.qmd)): the

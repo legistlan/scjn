@@ -207,5 +207,58 @@ class TestCliSpelling(unittest.TestCase):
                 self.assertIn(f"`scjn-{nombre}`", page)
 
 
+@unittest.skipUnless(
+    (ROOT / "website" / "pages").is_dir(),
+    "needs the repository checkout (website/ next to tests/)",
+)
+class TestCanonicalSentences(unittest.TestCase):
+    """The user site and the README say the same three things in the same words (issue #12)."""
+
+    S1 = (
+        "The texts are editorial: the Official Gazette of the Federation (DOF) remains "
+        "the official source of Mexican legal text."
+    )
+    S2 = "A snapshot is a dated version of an instrument: its text as it read after one reform."
+    S3 = (
+        "Current means the latest text the SCJN serves for an instrument at the time it "
+        "was collected; it is not a determination that every provision is in force."
+    )
+
+    @staticmethod
+    def _read(relative):
+        """The file's text with every run of whitespace collapsed to one space."""
+        return " ".join((ROOT / relative).read_text(encoding="utf-8").split())
+
+    def test_the_home_page_says_the_texts_are_editorial(self):
+        self.assertIn(self.S1, self._read("website/index.qmd"))
+
+    def test_the_readme_says_the_texts_are_editorial(self):
+        text = self._read("README.md")
+        self.assertIn(self.S1, text)
+        self.assertIn(self.S2, text)
+
+    def test_the_releases_page_defines_snapshot_and_current(self):
+        text = self._read("website/pages/releases.qmd")
+        self.assertIn(self.S2, text)
+        self.assertIn(self.S3, text)
+
+    def test_the_retired_phrases_are_gone(self):
+        files = [ROOT / "README.md", *sorted((ROOT / "website").rglob("*.qmd"))]
+        for path in files:
+            if "_site" in path.relative_to(ROOT).parts:
+                continue
+            text = " ".join(path.read_text(encoding="utf-8").split()).lower()
+            for phrase in ("convenience corpus", "consolidated view"):
+                with self.subTest(file=str(path.relative_to(ROOT)), phrase=phrase):
+                    self.assertNotIn(phrase, text)
+
+    def test_the_releases_page_names_every_collection(self):
+        page = self._read("website/pages/releases.qmd")
+        for nombre, cli_name in COLLECTION_CLI_NAMES.items():
+            with self.subTest(collection=cli_name):
+                self.assertIn(cli_name, page)
+                self.assertIn(f"`scjn-{nombre}`", page)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -2,9 +2,11 @@
 title: "Outline"
 ---
 
-The SCOW API serves a reform as ordered *blocks* (`orden`, `numero`,
-`referencia`, `contenido`, `tamanio`). The writer puts one marker line before
-each block that yields text:
+The SCJN does not serve structured legislation: each snapshot arrives from
+its API as an ordered sequence of *blocks* of plain text (`orden`, `numero`,
+`referencia`, `contenido`, `tamanio`), and each block carries a short outline:
+its position, its number and its label. The writer keeps that outline as one
+marker line before each block that yields text:
 
 ```text
 <!-- scjn:block orden=N numero=N kind=<kind> [type=] [num=] label="..." -->

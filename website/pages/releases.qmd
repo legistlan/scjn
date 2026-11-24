@@ -2,27 +2,77 @@
 title: "Releases"
 ---
 
-The data is never committed to the repository: the corpora live in five
-GitHub releases, all of them published (seven tags, since a release holds at most 1,000 assets
-and `scjn-reglamentos` and `scjn-tratados` continue in a `-2`).
+The data is never committed to the repository: the five collections live in
+five GitHub releases, all of them published (seven tags, since a release holds
+at most 1,000 assets and `scjn-reglamentos` and `scjn-tratados` continue in a
+`-2`).
 
-| Release | Content | Keyed by |
-|---|---|---|
-| `scjn-leyes` | 315 federal laws, 3,709 reform-dated snapshots | `abrev` (the slug) |
-| `scjn-reglamentos` | federal *reglamentos*: 1,087 instruments, 1,083 with text | `id_ordenamiento` |
-| `scjn-lineamientos` | federal *lineamientos*: 163 instruments, 126 with text | `id_ordenamiento` |
-| `scjn-tratados` | international treaties: 1,455 instruments, 1,373 with text | `id_ordenamiento` |
-| `scjn-estatutos` | federal *estatutos* (the SCJN's category `ESTATUTO`): 379 instruments, 377 with text, 1,139 snapshots | `id_ordenamiento` |
+| Collection | Release | Content | Keyed by |
+|---|---|---|---|
+| laws | `scjn-leyes` | 315 federal laws, 3,709 snapshots | `abrev` (the slug) |
+| regulations | `scjn-reglamentos` | federal *reglamentos*: 1,087 instruments, 1,083 with text | `id_ordenamiento` |
+| guidelines | `scjn-lineamientos` | federal *lineamientos*: 163 instruments, 126 with text | `id_ordenamiento` |
+| treaties | `scjn-tratados` | international treaties: 1,455 instruments, 1,373 with text | `id_ordenamiento` |
+| bylaws | `scjn-estatutos` | federal *estatutos* (the SCJN's category `ESTATUTO`): 379 instruments, 377 with text, 1,139 snapshots | `id_ordenamiento` |
 
-(Counts as published on 2026-11-17.) Two estatutos are indexed with no or incomplete
-snapshots because the SCJN serves one of their reforms with a missing block that the
-completeness guard refuses: `178398` has none and `111330` has 4 of its 5 reforms.
+(Counts as published on 2026-11-17.) The first column is the name the
+collection has at the [command line](cli.qmd). Two bylaws are indexed with no or
+incomplete snapshots because the SCJN serves one of their reforms with a
+missing block that the completeness guard refuses: `178398` has none and
+`111330` has 4 of its 5 reforms.
+
+## The collections
+
+The collections follow the SCJN's own documentary classification, not a
+scheme of legal hierarchy or normative authority. The SCJN's search service
+cannot list what its database holds (an empty query answers nothing), so each
+collection was found in its own way. In every case an instrument is resolved
+by the stable identifier the SCJN assigns to it (`id_ordenamiento`), never by
+its rank in the search results.
+
+- **Laws.** The federal laws, codes and the Constitution. The original list of
+  the 315 laws was seeded from the catalogue of federal legislation that the
+  Chamber of Deputies publishes; each law was then resolved by the SCJN's
+  identifier and its whole table of reforms was crawled. Every text comes from
+  the SCJN, and a law added since is discovered from the SCJN alone.
+- **Regulations.** The federal instruments the SCJN classifies `REGLAMENTO`,
+  found through unions of phrase searches for the federal scope (*ámbito*) and
+  that category, with every page of results read to its end.
+- **Guidelines.** The federal instruments the SCJN classifies `LINEAMIENTOS`,
+  found the same way. Guidelines are administrative instruments, typically
+  issued as *acuerdos*, whose provisions are numbered with ordinals rather than
+  as articles; they may differ in issuing authority and legal effects.
+- **Treaties.** Found through the scope under which the SCJN files them,
+  `TRATADOS INTERNACIONALES`, whatever their category, since a treaty may be
+  filed as a convention, an agreement or a protocol.
+- **Bylaws.** The federal instruments the SCJN classifies `ESTATUTO`: the
+  governing instruments of federal bodies, agencies and universities, found
+  the same way as the regulations.
+
+The SCJN reissues a regulation under a new identifier instead of reforming it,
+so the regulations and the guidelines hold several instruments with the same
+name. The releases ship all of them; choosing among them is the caller's
+decision.
+
+## Snapshots and what "current" means
+
+A snapshot is a dated version of an instrument: its text as it read after one
+reform. Every snapshot starts with a provenance header that always carries
+`fuente: scjn`, `ordenamiento` (the instrument's name), `fecha_publicacion`
+(the date the reform was published), `id_ordenamiento` (the identifier the
+SCJN assigns to the instrument) and `reforma_id` (the reform the snapshot
+reflects), and, when the SCJN gives them, `fecha_expedicion`, `categoria`,
+`seccion_publicacion` and `materia`.
+
+Current means the latest text the SCJN serves for an instrument at the time it
+was collected; it is not a determination that every provision is in force.
+Entry-into-force rules and judicial decisions may affect that. The SCJN's own
+`vigencia` field is published as the SCJN gives it and is a different thing.
 
 Each release carries an index plus one tarball per instrument. In `scjn-leyes`
 each tarball's `estado.json` has the law's `actualizado`, the date of the newest
 reform the SCJN serves for it (`actualizado_scjn`, or the date of the law's
-newest snapshot when that is absent), never a DOF date. An instrument
-with no consolidated text is indexed with `snapshots: 0` and has no tarball;
+newest snapshot when that is absent), never a DOF date. An instrument for which the SCJN serves no text belongs to its collection, is indexed with `snapshots: 0` and has no tarball;
 reading it raises `SinTextoEnSCJN`.
 
 ## What an index carries
